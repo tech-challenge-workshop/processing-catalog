@@ -1,0 +1,30 @@
+# Processing Catalog service boundary
+
+## Owns
+
+- The `ProcessingRequest` aggregate, its state machine, and idempotent state transitions.
+- PostgreSQL persistence for requests, metadata, and the transactional outbox.
+- Owner-scoped processing-status queries.
+- Reliable publication of versioned RabbitMQ validation, processing, and terminal events.
+
+## Primary technology context
+
+NestJS and TypeScript, PostgreSQL on RDS, and RabbitMQ.
+
+## Integrations
+
+- Receives request creation and status-query calls from FIAP X API.
+- Publishes and consumes versioned RabbitMQ events through its outbox and idempotent consumers.
+- Coordinates with Processing Worker through validation and processing outcome events.
+- Publishes terminal events consumed by Notification Service.
+
+## Does not own
+
+- HTTP JWT validation, presigned S3 URL generation, or direct binary transfer.
+- FFprobe/FFmpeg execution, frame extraction, ZIP creation, or S3 binary storage.
+- Email sending and notification delivery records.
+- Database tables owned by any other service.
+
+## Source of truth
+
+This foundation reflects `docs/foudation.md`, `docs/FIAP X.pdf`, and `docs/POSTECH - SOAT - Fase 5 - Hacka.pdf` in the parent workspace. It is not a product implementation.
