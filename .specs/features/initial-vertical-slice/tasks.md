@@ -126,7 +126,7 @@ T4 → T3
 
 **Tests**: unit
 **Gate**: full
-**Status**: Todo
+**Status**: Complete
 
 ---
 
