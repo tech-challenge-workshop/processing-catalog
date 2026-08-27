@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "promote_threshold": 2,
+  "window_days": 45,
+  "quarantine_threshold": 2,
+  "next_id": 2,
+  "lessons": [
+    {
+      "id": "L-001",
+      "key": "ac_gap::add a characterization test for spec edge cases even when the behavior is documented as unreachable so a future code addition cannot silently bypass the required rejection",
+      "text": "Add a characterization test for spec edge cases even when the behavior is documented as unreachable, so a future code addition cannot silently bypass the required rejection",
+      "signal": "ac_gap",
+      "scope": "domain",
+      "status": "candidate",
+      "features": [
+        "initial-vertical-slice"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "spec.md:48 - edge case unsupported status transition has no test (domain)"
+      ],
+      "created": "2026-08-27T23:35:46Z",
+      "last_seen": "2026-08-27T23:35:46Z"
+    }
+  ]
+}
