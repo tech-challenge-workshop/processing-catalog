@@ -1,3 +1,4 @@
+import { Inject } from '@nestjs/common';
 import {
   ProcessingRequest,
   ProcessingRequestDomainError,
@@ -17,7 +18,9 @@ export interface CreateProcessingRequestInput {
 
 export class CreateProcessingRequestUseCase {
   constructor(
+    @Inject('ProcessingRequestRepository')
     private readonly repository: ProcessingRequestRepository,
+    @Inject('EventPublisher')
     private readonly publisher: EventPublisher,
   ) {}
 

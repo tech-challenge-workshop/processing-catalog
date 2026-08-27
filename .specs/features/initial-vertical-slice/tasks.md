@@ -189,7 +189,7 @@ T3 → T5
 
 **Tests**: integration
 **Gate**: full
-**Status**: Todo
+**Status**: Complete
 
 ---
 
