@@ -3,7 +3,7 @@ import {
   VideoValidationRequestedEvent,
 } from '../application/event-publisher';
 
-export { VideoValidationRequestedEvent } from '../application/event-publisher';
+export type { VideoValidationRequestedEvent } from '../application/event-publisher';
 
 export class InMemoryEventPublisher implements EventPublisher {
   published: VideoValidationRequestedEvent[] = [];

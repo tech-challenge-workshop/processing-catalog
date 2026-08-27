@@ -51,10 +51,10 @@ The Catalog is the durable owner of `ProcessingRequest`. Its first slice must cr
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| CAT-01 | P1: Create and publish validation request | Tasks | In Progress |
-| CAT-02 | P1: Create and publish validation request | Tasks | In Progress |
-| CAT-03 | P1: Create and publish validation request | Tasks | In Progress |
-| CAT-04 | P1: Create and publish validation request | Tasks | In Progress |
+| CAT-01 | P1: Create and publish validation request | Tasks | Done |
+| CAT-02 | P1: Create and publish validation request | Tasks | Done |
+| CAT-03 | P1: Create and publish validation request | Tasks | Done |
+| CAT-04 | P1: Create and publish validation request | Tasks | Done |
 
 **Coverage:** 4 total, 4 mapped to future tasks, 0 unmapped.
 

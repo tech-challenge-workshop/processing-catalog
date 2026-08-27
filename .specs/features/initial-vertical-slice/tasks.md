@@ -222,7 +222,7 @@ T6 → T7
 
 **Tests**: unit
 **Gate**: full
-**Status**: Todo
+**Status**: Complete
 
 ---
 
@@ -251,7 +251,7 @@ T6 → T7
 
 **Tests**: integration
 **Gate**: build
-**Status**: Todo
+**Status**: Complete
 
 ## Phase Execution Map
 

@@ -4,11 +4,9 @@ import {
   ProcessingRequestDomainError,
   createProcessingRequest,
 } from '../domain/processing-request';
-import { ProcessingRequestRepository } from '../domain/processing-request.repository';
-import {
-  EventPublisher,
-  VideoValidationRequestedEvent,
-} from './event-publisher';
+import type { ProcessingRequestRepository } from '../domain/processing-request.repository';
+import type { EventPublisher } from './event-publisher';
+import { VideoValidationRequestedEvent } from './event-publisher';
 
 export interface CreateProcessingRequestInput {
   eventId: string;

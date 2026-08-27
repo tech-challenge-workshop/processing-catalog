@@ -16,12 +16,12 @@ import { InMemoryEventPublisher } from './infrastructure/in-memory-event-publish
       provide: 'ProcessingRequestRepository',
       useClass: InMemoryProcessingRequestRepository,
     },
+    InMemoryEventPublisher,
     {
       provide: 'EventPublisher',
-      useClass: InMemoryEventPublisher,
+      useExisting: InMemoryEventPublisher,
     },
     InMemoryProcessingRequestRepository,
-    InMemoryEventPublisher,
   ],
 })
 export class AppModule {}
