@@ -210,14 +210,14 @@ T4 → T7
 
 **Done when**:
 
-- [ ] Valid `VideoAccepted` produces a `QUEUED` request and publishes `ProcessingQueued` with `attemptId`.
-- [ ] Duplicate `eventId` produces no second transition or event.
-- [ ] Missing `processingRequestId` or unsupported transition rejects without publishing and without state change.
-- [ ] Publication failure propagates and leaves the source event unacknowledged.
+- [x] Valid `VideoAccepted` produces a `QUEUED` request and publishes `ProcessingQueued` with `attemptId`.
+- [x] Duplicate `eventId` produces no second transition or event.
+- [x] Missing `processingRequestId` or unsupported transition rejects without publishing and without state change.
+- [x] Publication failure propagates and leaves the source event unacknowledged.
 
 **Tests**: unit
 **Gate**: full
-**Status**: Pending
+**Status**: Done
 
 ---
 
