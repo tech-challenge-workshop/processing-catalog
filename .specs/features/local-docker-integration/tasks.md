@@ -337,12 +337,12 @@ T8 → T9
 
 **Done when**:
 
-- [ ] The adapter implements the expanded `EventPublisher` port.
-- [ ] Tests can assert each published shape independently.
+- [x] The adapter implements the expanded `EventPublisher` port.
+- [x] Tests can assert each published shape independently.
 
 **Tests**: unit
 **Gate**: full
-**Status**: Pending
+**Status**: Done
 
 ---
 
