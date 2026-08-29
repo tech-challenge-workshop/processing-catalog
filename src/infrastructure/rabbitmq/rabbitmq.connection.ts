@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import {
   connect,
   type AmqpConnectionManager,
@@ -20,7 +20,7 @@ export type RabbitMQQueue = (typeof RABBITMQ_QUEUES)[number];
 export const DEFAULT_RABBITMQ_URL = 'amqp://rabbitmq:5672';
 
 @Injectable()
-export class RabbitMQConnection implements OnModuleInit {
+export class RabbitMQConnection implements OnModuleInit, OnModuleDestroy {
   private connection: AmqpConnectionManager | undefined;
   private publishChannel: ChannelWrapper | undefined;
   private consumeChannel: ChannelWrapper | undefined;
@@ -83,5 +83,9 @@ export class RabbitMQConnection implements OnModuleInit {
       throw new Error('RabbitMQ consume channel is not initialized');
     }
     return this.consumeChannel;
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    await this.connection?.close();
   }
 }

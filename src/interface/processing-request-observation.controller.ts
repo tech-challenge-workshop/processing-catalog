@@ -5,7 +5,7 @@ import {
   NotFoundException,
   Param,
 } from '@nestjs/common';
-import { ProcessingRequestRepository } from '../domain/processing-request.repository';
+import type { ProcessingRequestRepository } from '../domain/processing-request.repository';
 
 @Controller('processing-requests')
 export class ProcessingRequestObservationController {

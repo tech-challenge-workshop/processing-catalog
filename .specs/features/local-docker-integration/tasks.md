@@ -494,13 +494,13 @@ T10 → T18
 
 **Done when**:
 
-- [ ] `docker build -t processing-catalog .` succeeds.
-- [ ] Image runs `node dist/main` on port 3000.
-- [ ] `.dockerignore` excludes `node_modules`, `dist`, `.env`, `.git`, and `._*`.
+- [x] `docker build -t processing-catalog .` succeeds.
+- [x] Image runs `node dist/main` on port 3000.
+- [x] `.dockerignore` excludes `node_modules`, `dist`, `.env`, `.git`, and `._*`.
 
 **Tests**: none
 **Gate**: build
-**Status**: Pending
+**Status**: Done
 
 ---
 

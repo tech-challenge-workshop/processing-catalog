@@ -28,10 +28,7 @@ export class RabbitMQEventPublisher implements EventPublisher {
     await this.publish('processing.terminal', event);
   }
 
-  private async publish(
-    routingKey: string,
-    event: Record<string, unknown>,
-  ): Promise<void> {
+  private async publish(routingKey: string, event: unknown): Promise<void> {
     const channel = this.connection.getPublishChannel();
     await channel.publish(RABBITMQ_EXCHANGE, routingKey, event);
   }
