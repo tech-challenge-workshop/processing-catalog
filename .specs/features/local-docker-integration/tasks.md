@@ -644,15 +644,15 @@ T19 → T20
 
 **Done when**:
 
-- [ ] `npm run lint` passes with zero warnings.
-- [ ] `npm test` passes.
-- [ ] `npm run build` succeeds.
-- [ ] `npm run test:e2e` passes.
-- [ ] Requirement traceability table in `spec.md` is updated to Done/Verified.
+- [x] `npm run lint` passes with zero warnings.
+- [x] `npm test` passes.
+- [x] `npm run build` succeeds.
+- [x] `npm run test:e2e` passes.
+- [x] Requirement traceability table in `spec.md` is updated to Done/Verified.
 
 **Tests**: all
 **Gate**: build
-**Status**: Pending
+**Status**: Done
 
 ## Phase Execution Map
 

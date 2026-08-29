@@ -6,9 +6,9 @@ Catalog owns request lifecycle but currently has no real RabbitMQ topology or te
 
 ## Goals
 
-- [ ] Publish and consume documented local JSON events through RabbitMQ.
-- [ ] Own `RECEIVED → QUEUED → COMPLETED` and reject invalid transitions.
-- [ ] Expose request state only in the local integration profile.
+- [x] Publish and consume documented local JSON events through RabbitMQ.
+- [x] Own `RECEIVED → QUEUED → COMPLETED` and reject invalid transitions.
+- [x] Expose request state only in the local integration profile.
 
 ## Out of Scope
 
@@ -58,18 +58,18 @@ Catalog owns request lifecycle but currently has no real RabbitMQ topology or te
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| CAT-01 | P1 | Design | Pending |
-| CAT-02 | P1 | Design | Pending |
-| CAT-03 | P1 | Design | Pending |
-| CAT-04 | P1 | Design | Pending |
-| CAT-05 | P1 | Design | Pending |
-| CAT-06 | P1 | Design | Pending |
-| CAT-07 | P1 | Design | Pending |
-| CAT-08 | P2 | Design | Pending |
-| CAT-09 | P2 | Design | Pending |
-| CAT-10 | P2 | Design | Pending |
+| CAT-01 | P1 | Design | Verified |
+| CAT-02 | P1 | Design | Verified |
+| CAT-03 | P1 | Design | Verified |
+| CAT-04 | P1 | Design | Verified |
+| CAT-05 | P1 | Design | Verified |
+| CAT-06 | P1 | Design | Verified |
+| CAT-07 | P1 | Design | Verified |
+| CAT-08 | P2 | Design | Verified |
+| CAT-09 | P2 | Design | Verified |
+| CAT-10 | P2 | Design | Verified |
 
 ## Success Criteria
 
-- [ ] Catalog reaches `COMPLETED` through local RabbitMQ and publishes one terminal event.
-- [ ] All Catalog gates pass without lint warnings.
+- [x] Catalog reaches `COMPLETED` through local RabbitMQ and publishes one terminal event.
+- [x] All Catalog gates pass without lint warnings.
