@@ -654,6 +654,33 @@ T19 → T20
 **Gate**: build
 **Status**: Done
 
+---
+
+### T21: Add negative e2e assertion for observation endpoint absence
+
+**What**: Add an assertion in `test/app.e2e-spec.ts` that `GET /processing-requests/:id` returns 404 when `LOCAL_INTEGRATION` is not set.
+
+**Where**: `test/app.e2e-spec.ts`
+
+**Depends on**: T14, T19
+
+**Reuses**: `test/app.e2e-spec.ts`
+
+**Requirement**: CAT-07
+
+**Tools**:
+
+- Skill: `tlc-spec-driven`
+
+**Done when**:
+
+- [x] `app.e2e-spec.ts` asserts 404 for `/processing-requests/any-id` without `LOCAL_INTEGRATION=true`.
+- [x] `npm run test:e2e` still passes.
+
+**Tests**: e2e
+**Gate**: full
+**Status**: Done
+
 ## Phase Execution Map
 
 ```

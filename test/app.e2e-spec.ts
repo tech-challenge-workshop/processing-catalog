@@ -75,6 +75,14 @@ describe('AppController (e2e)', () => {
       expect(publisher.published).toHaveLength(0);
       expect(repository.findByEventId('any')).toBeUndefined();
     });
+
+    it('does not expose the observation route when LOCAL_INTEGRATION is unset', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/processing-requests/any-id')
+        .send();
+
+      expect(response.status).toBe(404);
+    });
   });
 
   afterEach(async () => {
