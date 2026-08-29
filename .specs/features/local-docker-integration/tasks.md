@@ -522,13 +522,13 @@ T10 → T18
 
 **Done when**:
 
-- [ ] Test asserts `RECEIVED → COMPLETED` is rejected.
-- [ ] Test asserts `QUEUED → QUEUED` is rejected.
-- [ ] Prior state remains unchanged after rejection.
+- [x] Test asserts `RECEIVED → COMPLETED` is rejected.
+- [x] Test asserts `QUEUED → QUEUED` is rejected.
+- [x] Prior state remains unchanged after rejection.
 
 **Tests**: unit
 **Gate**: full
-**Status**: Pending
+**Status**: Done
 
 ---
 
