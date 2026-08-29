@@ -403,12 +403,12 @@ T13 → T14
 
 **Done when**:
 
-- [ ] Indicator returns `up` when connected and `down` when disconnected.
-- [ ] Unit tests prove both states.
+- [x] Indicator returns `up` when connected and `down` when disconnected.
+- [x] Unit tests prove both states.
 
 **Tests**: unit
 **Gate**: full
-**Status**: Pending
+**Status**: Done
 
 ---
 
