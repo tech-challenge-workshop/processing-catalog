@@ -307,15 +307,15 @@ T8 → T9
 
 **Done when**:
 
-- [ ] Consumers listen on `video.accepted` and `processing.completed` queues.
-- [ ] Valid events trigger state transitions and follow-up publications.
-- [ ] Invalid events are rejected without acknowledgment.
-- [ ] Publication failure leaves the source message unacknowledged.
-- [ ] Unit tests cover valid, invalid, duplicate, and publication-failure paths.
+- [x] Consumers listen on `video.accepted` and `processing.completed` queues.
+- [x] Valid events trigger state transitions and follow-up publications.
+- [x] Invalid events are rejected without acknowledgment.
+- [x] Publication failure leaves the source message unacknowledged.
+- [x] Unit tests cover valid, invalid, duplicate, and publication-failure paths.
 
 **Tests**: unit
 **Gate**: full
-**Status**: Pending
+**Status**: Done
 
 ---
 
