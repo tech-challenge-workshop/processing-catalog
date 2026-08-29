@@ -182,13 +182,13 @@ T4 → T7
 
 **Done when**:
 
-- [ ] The port declares `publishVideoValidationRequested`, `publishProcessingQueued`, and `publishTerminalEvent`.
-- [ ] Existing `CreateProcessingRequestUseCase` is updated to call the new method.
-- [ ] Tests still pass.
+- [x] The port declares `publishVideoValidationRequested`, `publishProcessingQueued`, and `publishTerminalEvent`.
+- [x] Existing `CreateProcessingRequestUseCase` is updated to call the new method.
+- [x] Tests still pass.
 
 **Tests**: unit
 **Gate**: full
-**Status**: Pending
+**Status**: Done
 
 ---
 

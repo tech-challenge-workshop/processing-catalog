@@ -1,11 +1,13 @@
-export interface VideoValidationRequestedEvent {
-  eventId: string;
-  processingRequestId: string;
-  ownerUserId: string;
-  sourceStorageKey: string;
-  occurredAt: string;
-}
+import {
+  ProcessingQueuedDto,
+  TerminalEventDto,
+  VideoValidationRequestedDto,
+} from '../messaging/dto';
+
+export type VideoValidationRequestedEvent = VideoValidationRequestedDto;
 
 export interface EventPublisher {
-  publish(event: VideoValidationRequestedEvent): void;
+  publishVideoValidationRequested(event: VideoValidationRequestedDto): void;
+  publishProcessingQueued(event: ProcessingQueuedDto): void;
+  publishTerminalEvent(event: TerminalEventDto): void;
 }

@@ -47,7 +47,7 @@ export class CreateProcessingRequestUseCase {
       occurredAt: request.createdAt.toISOString(),
     };
 
-    this.publisher.publish(event);
+    this.publisher.publishVideoValidationRequested(event);
     this.repository.markEventProcessed(
       input.eventId,
       request.processingRequestId,
