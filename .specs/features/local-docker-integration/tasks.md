@@ -430,12 +430,12 @@ T13 → T14
 
 **Done when**:
 
-- [ ] `/health` reflects the RabbitMQ connection state.
-- [ ] Integration tests assert 200/503 states.
+- [x] `/health` reflects the RabbitMQ connection state.
+- [x] Integration tests assert 200/503 states.
 
 **Tests**: integration
 **Gate**: full
-**Status**: Pending
+**Status**: Done
 
 ---
 
