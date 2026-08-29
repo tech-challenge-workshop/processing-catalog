@@ -86,6 +86,8 @@ export class RabbitMQConnection implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleDestroy(): Promise<void> {
+    await this.publishChannel?.close();
+    await this.consumeChannel?.close();
     await this.connection?.close();
   }
 }

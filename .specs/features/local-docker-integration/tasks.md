@@ -577,13 +577,13 @@ T10 → T18
 
 **Done when**:
 
-- [ ] `AppModule` binds `InMemoryEventPublisher` to the expanded `EventPublisher` token.
-- [ ] All existing unit and e2e tests pass.
-- [ ] Lint passes with zero warnings.
+- [x] `AppModule` binds the appropriate event publisher to the expanded `EventPublisher` token.
+- [x] All existing unit and e2e tests pass.
+- [x] Lint passes with zero warnings.
 
 **Tests**: unit + integration
 **Gate**: full
-**Status**: Pending
+**Status**: Done
 
 ---
 

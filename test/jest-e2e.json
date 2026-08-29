@@ -6,5 +6,6 @@
   "testPathIgnorePatterns": ["/node_modules/", "/\\._"],
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
-  }
+  },
+  "forceExit": true
 }
