@@ -1,4 +1,7 @@
-import { createProcessingRequest } from '../domain/processing-request';
+import {
+  acceptProcessingRequest,
+  createProcessingRequest,
+} from '../domain/processing-request';
 import { InMemoryProcessingRequestRepository } from './in-memory-processing-request.repository';
 
 describe('InMemoryProcessingRequestRepository', () => {
@@ -20,6 +23,23 @@ describe('InMemoryProcessingRequestRepository', () => {
       request.processingRequestId,
     );
     expect(found).toEqual(request);
+  });
+
+  it('updates a request in place', () => {
+    const request = createProcessingRequest({
+      ownerUserId: 'user-123',
+      sourceStorageKey: 'videos/input.mp4',
+    });
+    repository.save(request);
+
+    const updated = acceptProcessingRequest(request);
+    repository.update(updated);
+
+    const found = repository.findByProcessingRequestId(
+      request.processingRequestId,
+    );
+    expect(found).toEqual(updated);
+    expect(found?.status).toBe('QUEUED');
   });
 
   it('returns undefined when processingRequestId is not found', () => {

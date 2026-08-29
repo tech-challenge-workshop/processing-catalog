@@ -146,12 +146,12 @@ T1 → T5
 
 **Done when**:
 
-- [ ] The adapter overwrites the stored request on `update`.
-- [ ] Unit tests prove update and deduplication.
+- [x] The adapter overwrites the stored request on `update`.
+- [x] Unit tests prove update and deduplication.
 
 **Tests**: unit
 **Gate**: full
-**Status**: Pending
+**Status**: Done
 
 ---
 
