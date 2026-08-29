@@ -39,6 +39,10 @@ export class ProcessingCompletedConsumer implements OnModuleInit {
   }
 
   private parseProcessingCompleted(content: unknown): ProcessingCompletedDto {
+    if (content && typeof content === 'object' && 'data' in content) {
+      content = content.data;
+    }
+
     if (
       !content ||
       typeof content !== 'object' ||

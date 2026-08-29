@@ -38,6 +38,10 @@ export class VideoAcceptedConsumer implements OnModuleInit {
   }
 
   private parseVideoAccepted(content: unknown): VideoAcceptedDto {
+    if (content && typeof content === 'object' && 'data' in content) {
+      content = content.data;
+    }
+
     if (
       !content ||
       typeof content !== 'object' ||

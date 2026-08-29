@@ -85,6 +85,15 @@ export class RabbitMQConnection implements OnModuleInit, OnModuleDestroy {
     return this.consumeChannel;
   }
 
+  async sendToQueue(
+    queue: string,
+    pattern: string,
+    event: unknown,
+  ): Promise<void> {
+    const channel = this.getPublishChannel();
+    await channel.sendToQueue(queue, { pattern, data: event });
+  }
+
   async onModuleDestroy(): Promise<void> {
     await this.publishChannel?.close();
     await this.consumeChannel?.close();

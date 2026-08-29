@@ -1,32 +1,20 @@
 import { RabbitMQEventPublisher } from './rabbitmq.event-publisher';
-import {
-  RABBITMQ_EXCHANGE,
-  type RabbitMQConnection,
-} from './rabbitmq.connection';
+import { type RabbitMQConnection } from './rabbitmq.connection';
 
 describe('RabbitMQEventPublisher', () => {
-  let publishMock: jest.Mock;
+  let sendToQueueMock: jest.Mock;
   let connectionMock: RabbitMQConnection;
   let publisher: RabbitMQEventPublisher;
 
   beforeEach(() => {
-    publishMock = jest.fn().mockResolvedValue(true);
+    sendToQueueMock = jest.fn().mockResolvedValue(undefined);
     connectionMock = {
-      getPublishChannel: () =>
-        ({
-          publish: publishMock,
-        }) as unknown as {
-          publish: (
-            exchange: string,
-            routingKey: string,
-            content: unknown,
-          ) => Promise<boolean>;
-        },
+      sendToQueue: sendToQueueMock,
     } as unknown as RabbitMQConnection;
     publisher = new RabbitMQEventPublisher(connectionMock);
   });
 
-  it('publishes VideoValidationRequested with the correct routing key', async () => {
+  it('publishes VideoValidationRequested to the worker validation queue', async () => {
     const event = {
       eventId: 'event-1',
       processingRequestId: 'req-1',
@@ -37,10 +25,10 @@ describe('RabbitMQEventPublisher', () => {
 
     await publisher.publishVideoValidationRequested(event);
 
-    expect(publishMock).toHaveBeenCalledTimes(1);
-    expect(publishMock).toHaveBeenCalledWith(
-      RABBITMQ_EXCHANGE,
-      'video.validation.requested',
+    expect(sendToQueueMock).toHaveBeenCalledTimes(1);
+    expect(sendToQueueMock).toHaveBeenCalledWith(
+      'video-validation',
+      'VideoValidationRequested',
       event,
     );
   });
@@ -57,9 +45,9 @@ describe('RabbitMQEventPublisher', () => {
 
     await publisher.publishProcessingQueued(event);
 
-    expect(publishMock).toHaveBeenCalledWith(
-      RABBITMQ_EXCHANGE,
-      'processing.queued',
+    expect(sendToQueueMock).toHaveBeenCalledWith(
+      'processing',
+      'ProcessingQueued',
       event,
     );
   });
@@ -76,9 +64,9 @@ describe('RabbitMQEventPublisher', () => {
 
     await publisher.publishTerminalEvent(event);
 
-    expect(publishMock).toHaveBeenCalledWith(
-      RABBITMQ_EXCHANGE,
-      'processing.terminal',
+    expect(sendToQueueMock).toHaveBeenCalledWith(
+      'notification.terminal',
+      'terminal.event',
       event,
     );
   });

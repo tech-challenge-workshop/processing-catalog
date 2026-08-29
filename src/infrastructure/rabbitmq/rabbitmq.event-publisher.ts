@@ -5,7 +5,7 @@ import {
   TerminalEventDto,
   VideoValidationRequestedDto,
 } from '../../messaging/dto';
-import { RabbitMQConnection, RABBITMQ_EXCHANGE } from './rabbitmq.connection';
+import { RabbitMQConnection } from './rabbitmq.connection';
 
 @Injectable()
 export class RabbitMQEventPublisher implements EventPublisher {
@@ -17,19 +17,22 @@ export class RabbitMQEventPublisher implements EventPublisher {
   async publishVideoValidationRequested(
     event: VideoValidationRequestedDto,
   ): Promise<void> {
-    await this.publish('video.validation.requested', event);
+    await this.connection.sendToQueue(
+      'video-validation',
+      'VideoValidationRequested',
+      event,
+    );
   }
 
   async publishProcessingQueued(event: ProcessingQueuedDto): Promise<void> {
-    await this.publish('processing.queued', event);
+    await this.connection.sendToQueue('processing', 'ProcessingQueued', event);
   }
 
   async publishTerminalEvent(event: TerminalEventDto): Promise<void> {
-    await this.publish('processing.terminal', event);
-  }
-
-  private async publish(routingKey: string, event: unknown): Promise<void> {
-    const channel = this.connection.getPublishChannel();
-    await channel.publish(RABBITMQ_EXCHANGE, routingKey, event);
+    await this.connection.sendToQueue(
+      'notification.terminal',
+      'terminal.event',
+      event,
+    );
   }
 }
