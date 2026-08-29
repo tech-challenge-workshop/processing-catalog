@@ -77,8 +77,17 @@ describe('AppController (e2e)', () => {
     });
 
     it('does not expose the observation route when LOCAL_INTEGRATION is unset', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/processing-requests')
+        .send({
+          ownerUserId: 'user-123',
+          sourceStorageKey: 'videos/input.mp4',
+        });
+
+      const body = created.body as CreateProcessingRequestResponse;
+
       const response = await request(app.getHttpServer())
-        .get('/processing-requests/any-id')
+        .get(`/processing-requests/${body.processingRequestId}`)
         .send();
 
       expect(response.status).toBe(404);
