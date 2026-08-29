@@ -64,12 +64,12 @@ T1 → T5
 
 **Done when**:
 
-- [ ] DTOs mirror the documented JSON fields exactly.
-- [ ] DTOs are local to the Catalog repository.
+- [x] DTOs mirror the documented JSON fields exactly.
+- [x] DTOs are local to the Catalog repository.
 
 **Tests**: unit
 **Gate**: full
-**Status**: Pending
+**Status**: Done
 
 ---
 
