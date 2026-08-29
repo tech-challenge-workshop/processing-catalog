@@ -239,14 +239,14 @@ T4 → T7
 
 **Done when**:
 
-- [ ] Valid `ProcessingCompleted` produces a `COMPLETED` request and publishes the terminal event with `status`, `zipStorageKey`, and `ownerUserId`.
-- [ ] Duplicate `eventId` produces no second transition or event.
-- [ ] Missing `processingRequestId` or unsupported transition rejects without publishing and without state change.
-- [ ] Publication failure propagates and leaves the source event unacknowledged.
+- [x] Valid `ProcessingCompleted` produces a `COMPLETED` request and publishes the terminal event with `status`, `zipStorageKey`, and `ownerUserId`.
+- [x] Duplicate `eventId` produces no second transition or event.
+- [x] Missing `processingRequestId` or unsupported transition rejects without publishing and without state change.
+- [x] Publication failure propagates and leaves the source event unacknowledged.
 
 **Tests**: unit
 **Gate**: full
-**Status**: Pending
+**Status**: Done
 
 ---
 
