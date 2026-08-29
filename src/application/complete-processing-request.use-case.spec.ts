@@ -17,12 +17,12 @@ describe('CompleteProcessingRequestUseCase', () => {
     useCase = new CompleteProcessingRequestUseCase(repository, publisher);
   });
 
-  const createQueuedRequest = () => {
+  const createQueuedRequest = async () => {
     const createUseCase = new CreateProcessingRequestUseCase(
       repository,
       publisher,
     );
-    const request = createUseCase.execute({
+    const request = await createUseCase.execute({
       eventId: randomUUID(),
       ownerUserId: 'user-123',
       sourceStorageKey: 'videos/input.mp4',
@@ -38,12 +38,12 @@ describe('CompleteProcessingRequestUseCase', () => {
     });
   };
 
-  it('transitions a request from QUEUED to COMPLETED and publishes TerminalEvent', () => {
-    const request = createQueuedRequest();
+  it('transitions a request from QUEUED to COMPLETED and publishes TerminalEvent', async () => {
+    const request = await createQueuedRequest();
     const eventId = 'completed-event-1';
     const occurredAt = new Date().toISOString();
 
-    const updated = useCase.execute({
+    const updated = await useCase.execute({
       eventId,
       processingRequestId: request.processingRequestId,
       zipStorageKey: 'zips/output.zip',
@@ -67,18 +67,18 @@ describe('CompleteProcessingRequestUseCase', () => {
     expect(published?.occurredAt).toBe(occurredAt);
   });
 
-  it('is idempotent for a repeated eventId', () => {
-    const request = createQueuedRequest();
+  it('is idempotent for a repeated eventId', async () => {
+    const request = await createQueuedRequest();
     const eventId = 'completed-event-2';
 
-    useCase.execute({
+    await useCase.execute({
       eventId,
       processingRequestId: request.processingRequestId,
       zipStorageKey: 'zips/output.zip',
       occurredAt: new Date().toISOString(),
     });
 
-    useCase.execute({
+    await useCase.execute({
       eventId,
       processingRequestId: request.processingRequestId,
       zipStorageKey: 'zips/output.zip',
@@ -93,51 +93,51 @@ describe('CompleteProcessingRequestUseCase', () => {
     expect(found?.status).toBe(ProcessingRequestStatus.COMPLETED);
   });
 
-  it('rejects an event without processingRequestId', () => {
-    expect(() =>
+  it('rejects an event without processingRequestId', async () => {
+    await expect(
       useCase.execute({
         eventId: 'completed-event-3',
         processingRequestId: '',
         zipStorageKey: 'zips/output.zip',
         occurredAt: new Date().toISOString(),
       }),
-    ).toThrow('processingRequestId is required');
+    ).rejects.toThrow('processingRequestId is required');
 
     expect(publisher.publishedTerminalEvents).toHaveLength(0);
   });
 
-  it('rejects an event without zipStorageKey', () => {
-    const request = createQueuedRequest();
+  it('rejects an event without zipStorageKey', async () => {
+    const request = await createQueuedRequest();
 
-    expect(() =>
+    await expect(
       useCase.execute({
         eventId: 'completed-event-4',
         processingRequestId: request.processingRequestId,
         zipStorageKey: '',
         occurredAt: new Date().toISOString(),
       }),
-    ).toThrow('zipStorageKey is required');
+    ).rejects.toThrow('zipStorageKey is required');
 
     expect(publisher.publishedTerminalEvents).toHaveLength(0);
   });
 
-  it('rejects an unsupported transition without publishing or changing state', () => {
-    const request = createQueuedRequest();
-    useCase.execute({
+  it('rejects an unsupported transition without publishing or changing state', async () => {
+    const request = await createQueuedRequest();
+    await useCase.execute({
       eventId: 'completed-event-5',
       processingRequestId: request.processingRequestId,
       zipStorageKey: 'zips/output.zip',
       occurredAt: new Date().toISOString(),
     });
 
-    expect(() =>
+    await expect(
       useCase.execute({
         eventId: 'completed-event-6',
         processingRequestId: request.processingRequestId,
         zipStorageKey: 'zips/output2.zip',
         occurredAt: new Date().toISOString(),
       }),
-    ).toThrow('Cannot complete request in COMPLETED status');
+    ).rejects.toThrow('Cannot complete request in COMPLETED status');
 
     expect(publisher.publishedTerminalEvents).toHaveLength(1);
 
@@ -148,20 +148,20 @@ describe('CompleteProcessingRequestUseCase', () => {
     expect(found?.zipStorageKey).toBe('zips/output.zip');
   });
 
-  it('propagates publication failure without marking the event processed', () => {
-    const request = createQueuedRequest();
+  it('propagates publication failure without marking the event processed', async () => {
+    const request = await createQueuedRequest();
     publisher.publishTerminalEvent = () => {
       throw new Error('broker down');
     };
 
-    expect(() =>
+    await expect(
       useCase.execute({
         eventId: 'completed-event-7',
         processingRequestId: request.processingRequestId,
         zipStorageKey: 'zips/output.zip',
         occurredAt: new Date().toISOString(),
       }),
-    ).toThrow('broker down');
+    ).rejects.toThrow('broker down');
 
     expect(repository.hasEventBeenProcessed('completed-event-7')).toBe(false);
   });

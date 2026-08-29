@@ -278,14 +278,14 @@ T8 → T9
 
 **Done when**:
 
-- [ ] Connection is established from `RABBITMQ_URL` (default `amqp://rabbitmq:5672`).
-- [ ] Topology (exchange, queues, bindings) is declared at startup.
-- [ ] `RabbitMQEventPublisher` implements the expanded `EventPublisher` port.
-- [ ] Unit tests prove serialization and exchange/routing-key selection.
+- [x] Connection is established from `RABBITMQ_URL` (default `amqp://rabbitmq:5672`).
+- [x] Topology (exchange, queues, bindings) is declared at startup.
+- [x] `RabbitMQEventPublisher` implements the expanded `EventPublisher` port.
+- [x] Unit tests prove serialization and exchange/routing-key selection.
 
 **Tests**: unit
 **Gate**: full
-**Status**: Pending
+**Status**: Done
 
 ---
 

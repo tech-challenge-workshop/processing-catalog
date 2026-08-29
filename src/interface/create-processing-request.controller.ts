@@ -11,11 +11,11 @@ export class CreateProcessingRequestController {
   ) {}
 
   @Post()
-  create(@Body() dto: CreateProcessingRequestDto) {
+  async create(@Body() dto: CreateProcessingRequestDto) {
     this.validateDto(dto);
 
     try {
-      const request = this.createProcessingRequestUseCase.execute({
+      const request = await this.createProcessingRequestUseCase.execute({
         eventId: randomUUID(),
         ownerUserId: dto.ownerUserId,
         sourceStorageKey: dto.sourceStorageKey,

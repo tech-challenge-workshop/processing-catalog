@@ -22,7 +22,9 @@ export class CreateProcessingRequestUseCase {
     private readonly publisher: EventPublisher,
   ) {}
 
-  execute(input: CreateProcessingRequestInput): ProcessingRequest {
+  async execute(
+    input: CreateProcessingRequestInput,
+  ): Promise<ProcessingRequest> {
     if (!input.eventId || input.eventId.trim().length === 0) {
       throw new ProcessingRequestDomainError('eventId is required');
     }
@@ -47,7 +49,7 @@ export class CreateProcessingRequestUseCase {
       occurredAt: request.createdAt.toISOString(),
     };
 
-    this.publisher.publishVideoValidationRequested(event);
+    await this.publisher.publishVideoValidationRequested(event);
     this.repository.markEventProcessed(
       input.eventId,
       request.processingRequestId,

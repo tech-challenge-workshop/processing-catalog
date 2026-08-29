@@ -14,8 +14,8 @@ describe('CreateProcessingRequestUseCase', () => {
     useCase = new CreateProcessingRequestUseCase(repository, publisher);
   });
 
-  it('creates a request in RECEIVED state and publishes VideoValidationRequested', () => {
-    const request = useCase.execute({
+  it('creates a request in RECEIVED state and publishes VideoValidationRequested', async () => {
+    const request = await useCase.execute({
       eventId: 'event-123',
       ownerUserId: 'user-123',
       sourceStorageKey: 'videos/input.mp4',
@@ -34,15 +34,15 @@ describe('CreateProcessingRequestUseCase', () => {
     expect(published!.occurredAt).toBe(request.createdAt.toISOString());
   });
 
-  it('is idempotent for a repeated eventId', () => {
+  it('is idempotent for a repeated eventId', async () => {
     const input = {
       eventId: 'event-456',
       ownerUserId: 'user-456',
       sourceStorageKey: 'videos/another.mp4',
     };
 
-    const firstRequest = useCase.execute(input);
-    const secondRequest = useCase.execute(input);
+    const firstRequest = await useCase.execute(input);
+    const secondRequest = await useCase.execute(input);
 
     expect(firstRequest.processingRequestId).toBe(
       secondRequest.processingRequestId,
@@ -50,27 +50,27 @@ describe('CreateProcessingRequestUseCase', () => {
     expect(publisher.published).toHaveLength(1);
   });
 
-  it('rejects missing ownerUserId without persisting or publishing', () => {
-    expect(() =>
+  it('rejects missing ownerUserId without persisting or publishing', async () => {
+    await expect(
       useCase.execute({
         eventId: 'event-789',
         ownerUserId: '',
         sourceStorageKey: 'videos/input.mp4',
       }),
-    ).toThrow('ownerUserId is required');
+    ).rejects.toThrow('ownerUserId is required');
 
     expect(publisher.published).toHaveLength(0);
     expect(repository.findByEventId('event-789')).toBeUndefined();
   });
 
-  it('rejects missing sourceStorageKey without persisting or publishing', () => {
-    expect(() =>
+  it('rejects missing sourceStorageKey without persisting or publishing', async () => {
+    await expect(
       useCase.execute({
         eventId: 'event-abc',
         ownerUserId: 'user-abc',
         sourceStorageKey: '',
       }),
-    ).toThrow('sourceStorageKey is required');
+    ).rejects.toThrow('sourceStorageKey is required');
 
     expect(publisher.published).toHaveLength(0);
     expect(repository.findByEventId('event-abc')).toBeUndefined();

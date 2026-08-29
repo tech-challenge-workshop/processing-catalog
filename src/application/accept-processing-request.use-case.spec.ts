@@ -16,7 +16,7 @@ describe('AcceptProcessingRequestUseCase', () => {
     useCase = new AcceptProcessingRequestUseCase(repository, publisher);
   });
 
-  const createRequest = () => {
+  const createRequest = async () => {
     const createUseCase = new CreateProcessingRequestUseCase(
       repository,
       publisher,
@@ -28,12 +28,12 @@ describe('AcceptProcessingRequestUseCase', () => {
     });
   };
 
-  it('transitions a request from RECEIVED to QUEUED and publishes ProcessingQueued', () => {
-    const request = createRequest();
+  it('transitions a request from RECEIVED to QUEUED and publishes ProcessingQueued', async () => {
+    const request = await createRequest();
     const eventId = 'accepted-event-1';
     const occurredAt = new Date().toISOString();
 
-    const updated = useCase.execute({
+    const updated = await useCase.execute({
       eventId,
       processingRequestId: request.processingRequestId,
       occurredAt,
@@ -57,17 +57,17 @@ describe('AcceptProcessingRequestUseCase', () => {
     expect(published?.occurredAt).toBe(occurredAt);
   });
 
-  it('is idempotent for a repeated eventId', () => {
-    const request = createRequest();
+  it('is idempotent for a repeated eventId', async () => {
+    const request = await createRequest();
     const eventId = 'accepted-event-2';
 
-    useCase.execute({
+    await useCase.execute({
       eventId,
       processingRequestId: request.processingRequestId,
       occurredAt: new Date().toISOString(),
     });
 
-    useCase.execute({
+    await useCase.execute({
       eventId,
       processingRequestId: request.processingRequestId,
       occurredAt: new Date().toISOString(),
@@ -81,33 +81,33 @@ describe('AcceptProcessingRequestUseCase', () => {
     expect(found?.status).toBe(ProcessingRequestStatus.QUEUED);
   });
 
-  it('rejects an event without processingRequestId', () => {
-    expect(() =>
+  it('rejects an event without processingRequestId', async () => {
+    await expect(
       useCase.execute({
         eventId: 'accepted-event-3',
         processingRequestId: '',
         occurredAt: new Date().toISOString(),
       }),
-    ).toThrow('processingRequestId is required');
+    ).rejects.toThrow('processingRequestId is required');
 
     expect(publisher.publishedProcessingQueued).toHaveLength(0);
   });
 
-  it('rejects an unsupported transition without publishing or changing state', () => {
-    const request = createRequest();
-    useCase.execute({
+  it('rejects an unsupported transition without publishing or changing state', async () => {
+    const request = await createRequest();
+    await useCase.execute({
       eventId: 'accepted-event-4',
       processingRequestId: request.processingRequestId,
       occurredAt: new Date().toISOString(),
     });
 
-    expect(() =>
+    await expect(
       useCase.execute({
         eventId: 'accepted-event-5',
         processingRequestId: request.processingRequestId,
         occurredAt: new Date().toISOString(),
       }),
-    ).toThrow('Cannot accept request in QUEUED status');
+    ).rejects.toThrow('Cannot accept request in QUEUED status');
 
     expect(publisher.publishedProcessingQueued).toHaveLength(1);
 
@@ -118,19 +118,19 @@ describe('AcceptProcessingRequestUseCase', () => {
     expect(found?.attemptId).toBeDefined();
   });
 
-  it('propagates publication failure without marking the event processed', () => {
-    const request = createRequest();
+  it('propagates publication failure without marking the event processed', async () => {
+    const request = await createRequest();
     publisher.publishProcessingQueued = () => {
       throw new Error('broker down');
     };
 
-    expect(() =>
+    await expect(
       useCase.execute({
         eventId: 'accepted-event-6',
         processingRequestId: request.processingRequestId,
         occurredAt: new Date().toISOString(),
       }),
-    ).toThrow('broker down');
+    ).rejects.toThrow('broker down');
 
     expect(repository.hasEventBeenProcessed('accepted-event-6')).toBe(false);
   });

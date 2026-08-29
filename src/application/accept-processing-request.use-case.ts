@@ -22,7 +22,9 @@ export class AcceptProcessingRequestUseCase {
     private readonly publisher: EventPublisher,
   ) {}
 
-  execute(input: AcceptProcessingRequestInput): ProcessingRequest {
+  async execute(
+    input: AcceptProcessingRequestInput,
+  ): Promise<ProcessingRequest> {
     if (!input.eventId || input.eventId.trim().length === 0) {
       throw new ProcessingRequestDomainError('eventId is required');
     }
@@ -53,7 +55,7 @@ export class AcceptProcessingRequestUseCase {
 
     this.repository.update(updated);
 
-    this.publisher.publishProcessingQueued({
+    await this.publisher.publishProcessingQueued({
       eventId: randomUUID(),
       processingRequestId: updated.processingRequestId,
       ownerUserId: updated.ownerUserId,

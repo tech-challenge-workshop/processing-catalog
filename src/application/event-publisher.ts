@@ -7,7 +7,9 @@ import {
 export type VideoValidationRequestedEvent = VideoValidationRequestedDto;
 
 export interface EventPublisher {
-  publishVideoValidationRequested(event: VideoValidationRequestedDto): void;
-  publishProcessingQueued(event: ProcessingQueuedDto): void;
-  publishTerminalEvent(event: TerminalEventDto): void;
+  publishVideoValidationRequested(
+    event: VideoValidationRequestedDto,
+  ): void | Promise<void>;
+  publishProcessingQueued(event: ProcessingQueuedDto): void | Promise<void>;
+  publishTerminalEvent(event: TerminalEventDto): void | Promise<void>;
 }
