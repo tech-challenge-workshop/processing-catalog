@@ -550,12 +550,12 @@ T10 → T18
 
 **Done when**:
 
-- [ ] `npm run lint` reports zero warnings.
-- [ ] The spec still exercises the controller correctly.
+- [x] `npm run lint` reports zero warnings.
+- [x] The spec still exercises the controller correctly.
 
 **Tests**: unit
 **Gate**: full
-**Status**: Pending
+**Status**: Done
 
 ---
 

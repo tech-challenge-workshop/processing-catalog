@@ -33,7 +33,7 @@ describe('CreateProcessingRequestController (integration)', () => {
 
     app = moduleRef.createNestApplication();
     await app.init();
-    request = supertest(app.getHttpServer());
+    request = supertest(app.getHttpServer() as import('http').Server);
   });
 
   afterEach(async () => {
