@@ -91,13 +91,13 @@ T1 → T5
 
 **Done when**:
 
-- [ ] `acceptProcessingRequest` transitions `RECEIVED → QUEUED` and generates a stable `attemptId`.
-- [ ] `completeProcessingRequest` transitions `QUEUED → COMPLETED` and stores `zipStorageKey`.
-- [ ] Unsupported transitions throw `ProcessingRequestDomainError` and leave the prior state unchanged.
+- [x] `acceptProcessingRequest` transitions `RECEIVED → QUEUED` and generates a stable `attemptId`.
+- [x] `completeProcessingRequest` transitions `QUEUED → COMPLETED` and stores `zipStorageKey`.
+- [x] Unsupported transitions throw `ProcessingRequestDomainError` and leave the prior state unchanged.
 
 **Tests**: unit
 **Gate**: full
-**Status**: Pending
+**Status**: Done
 
 ---
 

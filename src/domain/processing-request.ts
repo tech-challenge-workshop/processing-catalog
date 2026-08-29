@@ -13,6 +13,8 @@ export interface ProcessingRequest {
   ownerUserId: string;
   sourceStorageKey: string;
   status: ProcessingRequestStatus;
+  attemptId: string | undefined;
+  zipStorageKey: string | undefined;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -40,7 +42,49 @@ export function createProcessingRequest(
     ownerUserId: input.ownerUserId,
     sourceStorageKey: input.sourceStorageKey,
     status: ProcessingRequestStatus.RECEIVED,
+    attemptId: undefined,
+    zipStorageKey: undefined,
     createdAt: now,
+    updatedAt: now,
+  };
+}
+
+export function acceptProcessingRequest(
+  request: ProcessingRequest,
+): ProcessingRequest {
+  if (request.status !== ProcessingRequestStatus.RECEIVED) {
+    throw new ProcessingRequestDomainError(
+      `Cannot accept request in ${request.status} status`,
+    );
+  }
+
+  const now = new Date();
+  return {
+    ...request,
+    status: ProcessingRequestStatus.QUEUED,
+    attemptId: randomUUID(),
+    updatedAt: now,
+  };
+}
+
+export function completeProcessingRequest(
+  request: ProcessingRequest,
+  zipStorageKey: string,
+): ProcessingRequest {
+  if (request.status !== ProcessingRequestStatus.QUEUED) {
+    throw new ProcessingRequestDomainError(
+      `Cannot complete request in ${request.status} status`,
+    );
+  }
+  if (!zipStorageKey || zipStorageKey.trim().length === 0) {
+    throw new ProcessingRequestDomainError('zipStorageKey is required');
+  }
+
+  const now = new Date();
+  return {
+    ...request,
+    status: ProcessingRequestStatus.COMPLETED,
+    zipStorageKey,
     updatedAt: now,
   };
 }
