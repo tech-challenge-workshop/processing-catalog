@@ -457,13 +457,13 @@ T13 → T14
 
 **Done when**:
 
-- [ ] `RabbitMQModule` and health providers are registered.
-- [ ] Observation controller is registered only when `LOCAL_INTEGRATION=true`.
-- [ ] Build passes.
+- [x] `RabbitMQModule` and health providers are registered.
+- [x] Observation controller is registered only when `LOCAL_INTEGRATION=true`.
+- [x] Build passes.
 
 **Tests**: integration
 **Gate**: full
-**Status**: Pending
+**Status**: Done
 
 ---
 
