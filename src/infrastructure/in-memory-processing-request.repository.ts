@@ -9,6 +9,10 @@ export class InMemoryProcessingRequestRepository implements ProcessingRequestRep
     this.requests.set(request.processingRequestId, request);
   }
 
+  update(request: ProcessingRequest): void {
+    this.requests.set(request.processingRequestId, request);
+  }
+
   findByProcessingRequestId(
     processingRequestId: string,
   ): ProcessingRequest | undefined {

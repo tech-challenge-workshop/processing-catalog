@@ -2,6 +2,7 @@ import { ProcessingRequest } from './processing-request';
 
 export interface ProcessingRequestRepository {
   save(request: ProcessingRequest): void;
+  update(request: ProcessingRequest): void;
   findByProcessingRequestId(
     processingRequestId: string,
   ): ProcessingRequest | undefined;

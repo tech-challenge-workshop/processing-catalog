@@ -119,12 +119,12 @@ T1 → T5
 
 **Done when**:
 
-- [ ] The port exposes `update` alongside existing save/find methods.
-- [ ] The port keeps processed-event tracking.
+- [x] The port exposes `update` alongside existing save/find methods.
+- [x] The port keeps processed-event tracking.
 
 **Tests**: unit
 **Gate**: full
-**Status**: Pending
+**Status**: Done
 
 ---
 
