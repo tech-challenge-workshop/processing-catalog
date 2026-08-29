@@ -10,6 +10,8 @@ import { InMemoryEventPublisher } from './infrastructure/in-memory-event-publish
 import { RabbitMQModule } from './infrastructure/rabbitmq/rabbitmq.module';
 import { RabbitMQEventPublisher } from './infrastructure/rabbitmq/rabbitmq.event-publisher';
 import { RabbitMQHealthIndicator } from './infrastructure/rabbitmq/rabbitmq.health-indicator';
+import { VideoAcceptedConsumer } from './infrastructure/rabbitmq/video-accepted.consumer';
+import { ProcessingCompletedConsumer } from './infrastructure/rabbitmq/processing-completed.consumer';
 import { HealthController } from './interface/health.controller';
 import { ProcessingRequestObservationController } from './interface/processing-request-observation.controller';
 
@@ -41,6 +43,8 @@ const isLocalIntegration = () => process.env.LOCAL_INTEGRATION === 'true';
         : InMemoryEventPublisher,
     },
     RabbitMQHealthIndicator,
+    VideoAcceptedConsumer,
+    ProcessingCompletedConsumer,
   ],
 })
 export class AppModule {}

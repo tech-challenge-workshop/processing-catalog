@@ -616,13 +616,13 @@ T19 → T20
 
 **Done when**:
 
-- [ ] e2e test exercises the full `RECEIVED → QUEUED → COMPLETED` path.
-- [ ] Duplicate and invalid events are asserted to have no effect.
-- [ ] Local observation endpoint is verified under `LOCAL_INTEGRATION=true`.
+- [x] e2e test exercises the full `RECEIVED → QUEUED → COMPLETED` path.
+- [x] Duplicate and invalid events are asserted to have no effect.
+- [x] Local observation endpoint is verified under `LOCAL_INTEGRATION=true`.
 
 **Tests**: e2e
 **Gate**: full
-**Status**: Pending
+**Status**: Done
 
 ---
 
