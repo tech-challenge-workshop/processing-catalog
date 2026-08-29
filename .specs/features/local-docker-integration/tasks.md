@@ -375,13 +375,13 @@ T13 → T14
 
 **Done when**:
 
-- [ ] Endpoint returns 200 with request state when `LOCAL_INTEGRATION=true`.
-- [ ] Endpoint is absent and returns 404 when the flag is not set.
-- [ ] Integration test proves both behaviors.
+- [x] Endpoint returns 200 with request state when `LOCAL_INTEGRATION=true`.
+- [x] Endpoint is absent and returns 404 when the flag is not set.
+- [x] Integration test proves both behaviors.
 
 **Tests**: integration
 **Gate**: full
-**Status**: Pending
+**Status**: Done
 
 ---
 
