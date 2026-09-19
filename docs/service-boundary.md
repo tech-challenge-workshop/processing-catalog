@@ -9,7 +9,7 @@
 
 ## Primary technology context
 
-NestJS and TypeScript, PostgreSQL on RDS, and RabbitMQ.
+NestJS and TypeScript, PostgreSQL, and RabbitMQ.
 
 ## Integrations
 
@@ -20,8 +20,8 @@ NestJS and TypeScript, PostgreSQL on RDS, and RabbitMQ.
 
 ## Does not own
 
-- HTTP JWT validation, presigned S3 URL generation, or direct binary transfer.
-- FFprobe/FFmpeg execution, frame extraction, ZIP creation, or S3 binary storage.
+- HTTP JWT validation, presigned storage URL generation, or direct binary transfer.
+- FFprobe/FFmpeg execution, frame extraction, ZIP creation, or binary object storage.
 - Email sending and notification delivery records.
 - Database tables owned by any other service.
 
