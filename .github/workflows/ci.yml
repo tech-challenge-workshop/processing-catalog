@@ -25,3 +25,12 @@ jobs:
       - run: npm test
       - run: npm run test:e2e
       - run: npm run build
+
+  image:
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the container image
+        run: docker build -t ${{ github.event.repository.name }}:ci .
