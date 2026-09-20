@@ -9,7 +9,7 @@ Implement these tasks with the `tlc-spec-driven` skill: **activate it by name an
 ---
 
 **Design**: `.specs/features/ci-pipeline/design.md`
-**Status**: In Progress
+**Status**: Done
 
 ---
 
@@ -201,11 +201,23 @@ T6
 
 **Done when**:
 
-- [ ] A pull request to `main` shows the `quality` check running
-- [ ] A deliberately introduced lint error turns the check red at the lint step
-- [ ] Reverting that error turns the check green
-- [ ] The exact check name is recorded in the design so it can be selected as a required status check
-- [ ] No unrelated change remains in the branch
+- [x] A pull request to `main` shows the `quality` check running
+- [x] A deliberately introduced lint error turns the check red at the lint step
+- [x] Reverting that error turns the check green
+- [x] The exact check name is recorded in the design so it can be selected as a required status check
+- [x] No unrelated change remains in the branch
+
+**Completed**: 2026-09-20
+
+| Evidence | Run |
+| --- | --- |
+| Required check `quality` turned **red** on a deliberate lint error, failing at `Run npm run lint` | [35538772101](https://github.com/tech-challenge-workshop/processing-catalog/actions/runs/35538772101) |
+| Reverting the probe turned `quality` **green** | [35538836830](https://github.com/tech-challenge-workshop/processing-catalog/actions/runs/35538836830) |
+
+Dependent jobs behaved as designed: they reported `SKIPPED` while the gate was red.
+The temporary pull request was closed without merging and its branch deleted, so no
+probe reached `main`. `quality` is now a required status check in the `protect main`
+ruleset.
 
 **Tests**: none
 **Gate**: build
