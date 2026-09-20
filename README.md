@@ -6,4 +6,4 @@ See [the service boundary](docs/service-boundary.md) for ownership, integrations
 
 ## Foundation scope
 
-This repository intentionally contains no NestJS, PostgreSQL, RabbitMQ, or TypeORM implementation yet. The approved system architecture is in the workspace's `docs/foudation.md`.
+This repository intentionally contains no NestJS, PostgreSQL, RabbitMQ, or TypeORM implementation yet. The approved system architecture is in the `fiap-x-platform` repository's `docs/foudation.md`.

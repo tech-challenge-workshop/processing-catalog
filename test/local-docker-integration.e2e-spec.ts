@@ -28,8 +28,8 @@ interface ProcessingRequestStateResponse {
 }
 
 interface PublishedEvent {
-  exchange: string;
-  routingKey: string;
+  queue: string;
+  pattern: string;
   content: unknown;
 }
 
@@ -39,12 +39,40 @@ interface FakeMessage {
   nack: () => void;
 }
 
-class FakeRabbitMQConnection implements Partial<RabbitMQConnection> {
+/**
+ * The members of `RabbitMQConnection` whose real signatures this fake honours
+ * exactly.
+ *
+ * Declared as a `Pick` rather than `Partial`: `Partial` makes every member
+ * optional, so when `sendToQueue` was introduced and the publisher started
+ * calling it, the fake compiled cleanly and only failed at runtime. A `Pick`
+ * makes a signature change - or a newly required member added to this list -
+ * break compilation instead.
+ *
+ * `getPublishChannel` and `getConsumeChannel` are deliberately outside the
+ * contract: they return a `ChannelWrapper`, which a fake cannot satisfy
+ * structurally without pulling in the whole amqp-connection-manager surface.
+ */
+type RabbitMQConnectionContract = Pick<
+  RabbitMQConnection,
+  'isConnected' | 'sendToQueue' | 'onModuleDestroy'
+>;
+
+class FakeRabbitMQConnection implements RabbitMQConnectionContract {
   published: PublishedEvent[] = [];
   private consumers = new Map<string, (message: FakeMessage) => void>();
 
   isConnected(): boolean {
     return true;
+  }
+
+  async sendToQueue(
+    queue: string,
+    pattern: string,
+    event: unknown,
+  ): Promise<void> {
+    this.published.push({ queue, pattern, content: event });
+    return Promise.resolve();
   }
 
   getPublishChannel(): {
@@ -56,7 +84,7 @@ class FakeRabbitMQConnection implements Partial<RabbitMQConnection> {
   } {
     return {
       publish: (exchange, routingKey, content) => {
-        this.published.push({ exchange, routingKey, content });
+        this.published.push({ queue: exchange, pattern: routingKey, content });
         return Promise.resolve(true);
       },
     };
@@ -141,8 +169,9 @@ describe('Local Docker Integration (e2e)', () => {
     expect(body.status).toBe('RECEIVED');
 
     expect(fakeConnection.published).toHaveLength(1);
-    expect(fakeConnection.published[0].routingKey).toBe(
-      'video.validation.requested',
+    expect(fakeConnection.published[0].queue).toBe('video-validation');
+    expect(fakeConnection.published[0].pattern).toBe(
+      'VideoValidationRequested',
     );
 
     fakeConnection.deliver('video.accepted', {
@@ -158,7 +187,8 @@ describe('Local Docker Integration (e2e)', () => {
     expect(queued?.status).toBe(ProcessingRequestStatus.QUEUED);
     expect(queued?.attemptId).toBeDefined();
     expect(fakeConnection.published).toHaveLength(2);
-    expect(fakeConnection.published[1].routingKey).toBe('processing.queued');
+    expect(fakeConnection.published[1].queue).toBe('processing');
+    expect(fakeConnection.published[1].pattern).toBe('ProcessingQueued');
 
     const queuedEvent = fakeConnection.published[1].content as {
       attemptId: string;
@@ -179,7 +209,8 @@ describe('Local Docker Integration (e2e)', () => {
     expect(completed?.status).toBe(ProcessingRequestStatus.COMPLETED);
     expect(completed?.zipStorageKey).toBe('zips/output.zip');
     expect(fakeConnection.published).toHaveLength(3);
-    expect(fakeConnection.published[2].routingKey).toBe('processing.terminal');
+    expect(fakeConnection.published[2].queue).toBe('notification.terminal');
+    expect(fakeConnection.published[2].pattern).toBe('terminal.event');
 
     const terminalEvent = fakeConnection.published[2].content as {
       status: string;
