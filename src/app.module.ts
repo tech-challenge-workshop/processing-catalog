@@ -8,6 +8,7 @@ import { CompleteProcessingRequestUseCase } from './application/complete-process
 import { StartProcessingRequestUseCase } from './application/start-processing-request.use-case';
 import { FailProcessingRequestUseCase } from './application/fail-processing-request.use-case';
 import { InMemoryProcessingRequestRepository } from './infrastructure/in-memory-processing-request.repository';
+import { DatabaseHealthIndicator } from './infrastructure/persistence/database.health-indicator';
 import { InMemoryEventPublisher } from './infrastructure/in-memory-event-publisher';
 import { RabbitMQModule } from './infrastructure/rabbitmq/rabbitmq.module';
 import { RabbitMQEventPublisher } from './infrastructure/rabbitmq/rabbitmq.event-publisher';
@@ -38,6 +39,7 @@ const isLocalIntegration = () => process.env.LOCAL_INTEGRATION === 'true';
     StartProcessingRequestUseCase,
     FailProcessingRequestUseCase,
     InMemoryProcessingRequestRepository,
+    DatabaseHealthIndicator,
     {
       provide: 'ProcessingRequestRepository',
       useExisting: InMemoryProcessingRequestRepository,

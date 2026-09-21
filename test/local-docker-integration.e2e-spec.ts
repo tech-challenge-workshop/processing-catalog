@@ -322,7 +322,11 @@ describe('Local Docker Integration (e2e)', () => {
     ).get('/health');
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ status: 'ok', rabbitmq: 'up' });
+    expect(response.body).toEqual({
+      status: 'ok',
+      rabbitmq: 'up',
+      database: 'up',
+    });
   });
 
   const createRequest = async (ownerUserId: string, key: string) => {
