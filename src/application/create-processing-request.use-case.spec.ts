@@ -60,7 +60,9 @@ describe('CreateProcessingRequestUseCase', () => {
     ).rejects.toThrow('ownerUserId is required');
 
     expect(publisher.published).toHaveLength(0);
-    expect(repository.findByEventId('event-789')).toBeUndefined();
+    await expect(
+      repository.findByEventId('event-789'),
+    ).resolves.toBeUndefined();
   });
 
   it('rejects missing sourceStorageKey without persisting or publishing', async () => {
@@ -73,6 +75,8 @@ describe('CreateProcessingRequestUseCase', () => {
     ).rejects.toThrow('sourceStorageKey is required');
 
     expect(publisher.published).toHaveLength(0);
-    expect(repository.findByEventId('event-abc')).toBeUndefined();
+    await expect(
+      repository.findByEventId('event-abc'),
+    ).resolves.toBeUndefined();
   });
 });

@@ -181,7 +181,7 @@ describe('Local Docker Integration (e2e)', () => {
     });
     await waitForMessage();
 
-    const queued = repository.findByProcessingRequestId(
+    const queued = await repository.findByProcessingRequestId(
       body.processingRequestId,
     );
     expect(queued?.status).toBe(ProcessingRequestStatus.QUEUED);
@@ -203,7 +203,7 @@ describe('Local Docker Integration (e2e)', () => {
     });
     await waitForMessage();
 
-    const processing = repository.findByProcessingRequestId(
+    const processing = await repository.findByProcessingRequestId(
       body.processingRequestId,
     );
     expect(processing?.status).toBe(ProcessingRequestStatus.PROCESSING);
@@ -218,7 +218,7 @@ describe('Local Docker Integration (e2e)', () => {
     });
     await waitForMessage();
 
-    const completed = repository.findByProcessingRequestId(
+    const completed = await repository.findByProcessingRequestId(
       body.processingRequestId,
     );
     expect(completed?.status).toBe(ProcessingRequestStatus.COMPLETED);
@@ -288,7 +288,7 @@ describe('Local Docker Integration (e2e)', () => {
     });
     await waitForMessage();
 
-    const stored = repository.findByProcessingRequestId(
+    const stored = await repository.findByProcessingRequestId(
       body.processingRequestId,
     );
     expect(stored?.status).toBe(ProcessingRequestStatus.RECEIVED);
@@ -344,7 +344,7 @@ describe('Local Docker Integration (e2e)', () => {
     });
     await waitForMessage();
 
-    const failed = repository.findByProcessingRequestId(
+    const failed = await repository.findByProcessingRequestId(
       body.processingRequestId,
     );
     expect(failed?.status).toBe(ProcessingRequestStatus.FAILED);
@@ -378,7 +378,7 @@ describe('Local Docker Integration (e2e)', () => {
     });
     await waitForMessage();
 
-    const queued = repository.findByProcessingRequestId(
+    const queued = await repository.findByProcessingRequestId(
       body.processingRequestId,
     );
 
@@ -390,7 +390,8 @@ describe('Local Docker Integration (e2e)', () => {
     });
     await waitForMessage();
     expect(
-      repository.findByProcessingRequestId(body.processingRequestId)?.status,
+      (await repository.findByProcessingRequestId(body.processingRequestId))
+        ?.status,
     ).toBe(ProcessingRequestStatus.PROCESSING);
 
     fakeConnection.published = [];
@@ -403,7 +404,7 @@ describe('Local Docker Integration (e2e)', () => {
     });
     await waitForMessage();
 
-    const failed = repository.findByProcessingRequestId(
+    const failed = await repository.findByProcessingRequestId(
       body.processingRequestId,
     );
     expect(failed?.status).toBe(ProcessingRequestStatus.FAILED);
@@ -438,7 +439,7 @@ describe('Local Docker Integration (e2e)', () => {
       await waitForMessage();
     }
 
-    const queued = repository.findByProcessingRequestId(
+    const queued = await repository.findByProcessingRequestId(
       body.processingRequestId,
     );
     fakeConnection.deliver('processing.started', {
@@ -456,7 +457,7 @@ describe('Local Docker Integration (e2e)', () => {
     });
     await waitForMessage();
 
-    const settled = repository.findByProcessingRequestId(
+    const settled = await repository.findByProcessingRequestId(
       body.processingRequestId,
     );
     const publishedCount = fakeConnection.published.length;
@@ -481,7 +482,7 @@ describe('Local Docker Integration (e2e)', () => {
     });
     await waitForMessage();
 
-    const afterReplay = repository.findByProcessingRequestId(
+    const afterReplay = await repository.findByProcessingRequestId(
       body.processingRequestId,
     );
     expect(afterReplay?.status).toBe(settled?.status);

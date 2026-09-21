@@ -40,7 +40,7 @@ describe('VideoAcceptedConsumer', () => {
 
     await consumer.handleMessage(content);
 
-    const found = repository.findByProcessingRequestId(
+    const found = await repository.findByProcessingRequestId(
       request.processingRequestId,
     );
     expect(found?.status).toBe('QUEUED');

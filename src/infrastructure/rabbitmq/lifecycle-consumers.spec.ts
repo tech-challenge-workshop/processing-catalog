@@ -61,8 +61,11 @@ describe('lifecycle consumers', () => {
       );
 
       expect(
-        repository.findByProcessingRequestId(request.processingRequestId)
-          ?.status,
+        (
+          await repository.findByProcessingRequestId(
+            request.processingRequestId,
+          )
+        )?.status,
       ).toBe(ProcessingRequestStatus.FAILED);
       expect(publisher.publishedTerminalEvents).toHaveLength(before + 1);
     });
@@ -83,8 +86,11 @@ describe('lifecycle consumers', () => {
       );
 
       expect(
-        repository.findByProcessingRequestId(request.processingRequestId)
-          ?.failureCode,
+        (
+          await repository.findByProcessingRequestId(
+            request.processingRequestId,
+          )
+        )?.failureCode,
       ).toBe('DURACAO_EXCEDIDA');
     });
 
@@ -133,8 +139,11 @@ describe('lifecycle consumers', () => {
       );
 
       expect(
-        repository.findByProcessingRequestId(request.processingRequestId)
-          ?.status,
+        (
+          await repository.findByProcessingRequestId(
+            request.processingRequestId,
+          )
+        )?.status,
       ).toBe(ProcessingRequestStatus.PROCESSING);
     });
 
@@ -151,8 +160,11 @@ describe('lifecycle consumers', () => {
       await consumer().handleMessage(content);
 
       expect(
-        repository.findByProcessingRequestId(request.processingRequestId)
-          ?.status,
+        (
+          await repository.findByProcessingRequestId(
+            request.processingRequestId,
+          )
+        )?.status,
       ).toBe(ProcessingRequestStatus.PROCESSING);
     });
 
@@ -172,7 +184,7 @@ describe('lifecycle consumers', () => {
 
     it('moves a processing request to FAILED with the reported code', async () => {
       const request = await queued();
-      repository.update(startProcessingRequest(request));
+      await repository.update(startProcessingRequest(request));
 
       await consumer().handleMessage(
         JSON.stringify({
@@ -184,7 +196,7 @@ describe('lifecycle consumers', () => {
         }),
       );
 
-      const stored = repository.findByProcessingRequestId(
+      const stored = await repository.findByProcessingRequestId(
         request.processingRequestId,
       );
       expect(stored?.status).toBe(ProcessingRequestStatus.FAILED);
@@ -193,7 +205,7 @@ describe('lifecycle consumers', () => {
 
     it('does not mark the event processed when publication fails', async () => {
       const request = await queued();
-      repository.update(startProcessingRequest(request));
+      await repository.update(startProcessingRequest(request));
       jest
         .spyOn(publisher, 'publishTerminalEvent')
         .mockImplementationOnce(() => {
@@ -212,7 +224,7 @@ describe('lifecycle consumers', () => {
         ),
       ).rejects.toThrow('broker down');
 
-      expect(repository.hasEventBeenProcessed('failed-1')).toBe(false);
+      expect(await repository.hasEventBeenProcessed('failed-1')).toBe(false);
     });
 
     it('rejects a malformed payload', async () => {

@@ -86,7 +86,7 @@ describe('FailProcessingRequestUseCase', () => {
 
   it('carries the attemptId when the attempt had started', async () => {
     const request = await queued();
-    repository.update(startProcessingRequest(request));
+    await repository.update(startProcessingRequest(request));
 
     await useCase.execute({
       eventId: 'failed-1',
@@ -102,7 +102,7 @@ describe('FailProcessingRequestUseCase', () => {
 
   it('fails a PROCESSING request', async () => {
     const request = await queued();
-    repository.update(startProcessingRequest(request));
+    await repository.update(startProcessingRequest(request));
 
     const updated = await useCase.execute({
       eventId: 'failed-1',
@@ -143,7 +143,8 @@ describe('FailProcessingRequestUseCase', () => {
     ).rejects.toThrow('Unknown failure code INVENTADO');
 
     expect(
-      repository.findByProcessingRequestId(request.processingRequestId)?.status,
+      (await repository.findByProcessingRequestId(request.processingRequestId))
+        ?.status,
     ).toBe(ProcessingRequestStatus.RECEIVED);
   });
 
@@ -166,7 +167,7 @@ describe('FailProcessingRequestUseCase', () => {
     ).rejects.toThrow('Cannot fail request in FAILED status');
 
     expect(
-      repository.findByProcessingRequestId(request.processingRequestId)
+      (await repository.findByProcessingRequestId(request.processingRequestId))
         ?.failureCode,
     ).toBe('FORMATO_INVALIDO');
   });
@@ -186,6 +187,6 @@ describe('FailProcessingRequestUseCase', () => {
       }),
     ).rejects.toThrow('broker down');
 
-    expect(repository.hasEventBeenProcessed('rejected-1')).toBe(false);
+    expect(await repository.hasEventBeenProcessed('rejected-1')).toBe(false);
   });
 });

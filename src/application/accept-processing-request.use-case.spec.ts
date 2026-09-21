@@ -42,7 +42,7 @@ describe('AcceptProcessingRequestUseCase', () => {
     expect(updated.status).toBe(ProcessingRequestStatus.QUEUED);
     expect(updated.attemptId).toBeDefined();
 
-    const found = repository.findByProcessingRequestId(
+    const found = await repository.findByProcessingRequestId(
       request.processingRequestId,
     );
     expect(found?.status).toBe(ProcessingRequestStatus.QUEUED);
@@ -75,7 +75,7 @@ describe('AcceptProcessingRequestUseCase', () => {
 
     expect(publisher.publishedProcessingQueued).toHaveLength(1);
 
-    const found = repository.findByProcessingRequestId(
+    const found = await repository.findByProcessingRequestId(
       request.processingRequestId,
     );
     expect(found?.status).toBe(ProcessingRequestStatus.QUEUED);
@@ -111,7 +111,7 @@ describe('AcceptProcessingRequestUseCase', () => {
 
     expect(publisher.publishedProcessingQueued).toHaveLength(1);
 
-    const found = repository.findByProcessingRequestId(
+    const found = await repository.findByProcessingRequestId(
       request.processingRequestId,
     );
     expect(found?.status).toBe(ProcessingRequestStatus.QUEUED);
@@ -132,6 +132,8 @@ describe('AcceptProcessingRequestUseCase', () => {
       }),
     ).rejects.toThrow('broker down');
 
-    expect(repository.hasEventBeenProcessed('accepted-event-6')).toBe(false);
+    expect(await repository.hasEventBeenProcessed('accepted-event-6')).toBe(
+      false,
+    );
   });
 });

@@ -73,7 +73,7 @@ describe('AppController (e2e)', () => {
 
       expect(response.status).toBe(400);
       expect(publisher.published).toHaveLength(0);
-      expect(repository.findByEventId('any')).toBeUndefined();
+      await expect(repository.findByEventId('any')).resolves.toBeUndefined();
     });
 
     it('does not expose the observation route when LOCAL_INTEGRATION is unset', async () => {

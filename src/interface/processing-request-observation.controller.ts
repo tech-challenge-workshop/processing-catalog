@@ -15,8 +15,8 @@ export class ProcessingRequestObservationController {
   ) {}
 
   @Get(':id')
-  findById(@Param('id') id: string) {
-    const request = this.repository.findByProcessingRequestId(id);
+  async findById(@Param('id') id: string) {
+    const request = await this.repository.findByProcessingRequestId(id);
 
     if (!request) {
       throw new NotFoundException(`Processing request ${id} not found`);
@@ -29,6 +29,7 @@ export class ProcessingRequestObservationController {
       status: request.status,
       attemptId: request.attemptId,
       zipStorageKey: request.zipStorageKey,
+      failureCode: request.failureCode,
       createdAt: request.createdAt.toISOString(),
       updatedAt: request.updatedAt.toISOString(),
     };

@@ -43,7 +43,7 @@ describe('CompleteProcessingRequestUseCase', () => {
     // Completion now requires PROCESSING. The start use case arrives in T7;
     // until then the transition is applied through the domain directly.
     const processing = startProcessingRequest(queued);
-    repository.update(processing);
+    await repository.update(processing);
     return processing;
   };
 
@@ -62,7 +62,7 @@ describe('CompleteProcessingRequestUseCase', () => {
     expect(updated.status).toBe(ProcessingRequestStatus.COMPLETED);
     expect(updated.zipStorageKey).toBe('zips/output.zip');
 
-    const found = repository.findByProcessingRequestId(
+    const found = await repository.findByProcessingRequestId(
       request.processingRequestId,
     );
     expect(found?.status).toBe(ProcessingRequestStatus.COMPLETED);
@@ -96,7 +96,7 @@ describe('CompleteProcessingRequestUseCase', () => {
 
     expect(publisher.publishedTerminalEvents).toHaveLength(1);
 
-    const found = repository.findByProcessingRequestId(
+    const found = await repository.findByProcessingRequestId(
       request.processingRequestId,
     );
     expect(found?.status).toBe(ProcessingRequestStatus.COMPLETED);
@@ -150,7 +150,7 @@ describe('CompleteProcessingRequestUseCase', () => {
 
     expect(publisher.publishedTerminalEvents).toHaveLength(1);
 
-    const found = repository.findByProcessingRequestId(
+    const found = await repository.findByProcessingRequestId(
       request.processingRequestId,
     );
     expect(found?.status).toBe(ProcessingRequestStatus.COMPLETED);
@@ -172,6 +172,8 @@ describe('CompleteProcessingRequestUseCase', () => {
       }),
     ).rejects.toThrow('broker down');
 
-    expect(repository.hasEventBeenProcessed('completed-event-7')).toBe(false);
+    expect(await repository.hasEventBeenProcessed('completed-event-7')).toBe(
+      false,
+    );
   });
 });

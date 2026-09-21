@@ -45,7 +45,8 @@ describe('StartProcessingRequestUseCase', () => {
 
     expect(updated.status).toBe(ProcessingRequestStatus.PROCESSING);
     expect(
-      repository.findByProcessingRequestId(request.processingRequestId)?.status,
+      (await repository.findByProcessingRequestId(request.processingRequestId))
+        ?.status,
     ).toBe(ProcessingRequestStatus.PROCESSING);
     expect(publisher.publishedTerminalEvents).toHaveLength(before);
   });
@@ -87,7 +88,7 @@ describe('StartProcessingRequestUseCase', () => {
     ).rejects.toThrow('Processing request does-not-exist not found');
 
     expect(
-      repository.findByProcessingRequestId('does-not-exist'),
+      await repository.findByProcessingRequestId('does-not-exist'),
     ).toBeUndefined();
   });
 
@@ -110,7 +111,8 @@ describe('StartProcessingRequestUseCase', () => {
     ).rejects.toThrow('Cannot start request in RECEIVED status');
 
     expect(
-      repository.findByProcessingRequestId(created.processingRequestId)?.status,
+      (await repository.findByProcessingRequestId(created.processingRequestId))
+        ?.status,
     ).toBe(ProcessingRequestStatus.RECEIVED);
   });
 

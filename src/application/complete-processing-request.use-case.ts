@@ -39,14 +39,14 @@ export class CompleteProcessingRequestUseCase {
       throw new ProcessingRequestDomainError('zipStorageKey is required');
     }
 
-    if (this.repository.hasEventBeenProcessed(input.eventId)) {
-      const existing = this.repository.findByEventId(input.eventId);
+    if (await this.repository.hasEventBeenProcessed(input.eventId)) {
+      const existing = await this.repository.findByEventId(input.eventId);
       if (existing) {
         return existing;
       }
     }
 
-    const request = this.repository.findByProcessingRequestId(
+    const request = await this.repository.findByProcessingRequestId(
       input.processingRequestId,
     );
     if (!request) {
@@ -57,7 +57,7 @@ export class CompleteProcessingRequestUseCase {
 
     const updated = completeProcessingRequest(request, input.zipStorageKey);
 
-    this.repository.update(updated);
+    await this.repository.update(updated);
 
     await this.publisher.publishTerminalEvent({
       eventId: randomUUID(),
@@ -68,7 +68,7 @@ export class CompleteProcessingRequestUseCase {
       occurredAt: input.occurredAt,
     });
 
-    this.repository.markEventProcessed(
+    await this.repository.markEventProcessed(
       input.eventId,
       updated.processingRequestId,
     );

@@ -1,41 +1,48 @@
 import { ProcessingRequest } from '../domain/processing-request';
 import { ProcessingRequestRepository } from '../domain/processing-request.repository';
 
+/**
+ * The unit-test adapter. It satisfies the asynchronous port without a
+ * database, so the fast suite stays fast; the PostgreSQL adapter is proven
+ * against PostgreSQL.
+ */
 export class InMemoryProcessingRequestRepository implements ProcessingRequestRepository {
   private requests = new Map<string, ProcessingRequest>();
   private eventIdToRequestId = new Map<string, string>();
 
-  save(request: ProcessingRequest): void {
+  save(request: ProcessingRequest): Promise<void> {
     this.requests.set(request.processingRequestId, request);
+    return Promise.resolve();
   }
 
-  update(request: ProcessingRequest): void {
+  update(request: ProcessingRequest): Promise<void> {
     this.requests.set(request.processingRequestId, request);
+    return Promise.resolve();
   }
 
   findByProcessingRequestId(
     processingRequestId: string,
-  ): ProcessingRequest | undefined {
-    return this.requests.get(processingRequestId);
+  ): Promise<ProcessingRequest | undefined> {
+    return Promise.resolve(this.requests.get(processingRequestId));
   }
 
-  findByEventId(eventId: string): ProcessingRequest | undefined {
+  findByEventId(eventId: string): Promise<ProcessingRequest | undefined> {
     const processingRequestId = this.eventIdToRequestId.get(eventId);
     if (!processingRequestId) {
-      return undefined;
+      return Promise.resolve(undefined);
     }
-    return this.requests.get(processingRequestId);
+    return Promise.resolve(this.requests.get(processingRequestId));
   }
 
-  markEventProcessed(eventId: string, processingRequestId?: string): void {
-    if (processingRequestId) {
-      this.eventIdToRequestId.set(eventId, processingRequestId);
-    } else {
-      this.eventIdToRequestId.set(eventId, '');
-    }
+  markEventProcessed(
+    eventId: string,
+    processingRequestId?: string,
+  ): Promise<void> {
+    this.eventIdToRequestId.set(eventId, processingRequestId ?? '');
+    return Promise.resolve();
   }
 
-  hasEventBeenProcessed(eventId: string): boolean {
-    return this.eventIdToRequestId.has(eventId);
+  hasEventBeenProcessed(eventId: string): Promise<boolean> {
+    return Promise.resolve(this.eventIdToRequestId.has(eventId));
   }
 }

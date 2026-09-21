@@ -29,7 +29,7 @@ export class CreateProcessingRequestUseCase {
       throw new ProcessingRequestDomainError('eventId is required');
     }
 
-    const existing = this.repository.findByEventId(input.eventId);
+    const existing = await this.repository.findByEventId(input.eventId);
     if (existing) {
       return existing;
     }
@@ -39,7 +39,7 @@ export class CreateProcessingRequestUseCase {
       sourceStorageKey: input.sourceStorageKey,
     });
 
-    this.repository.save(request);
+    await this.repository.save(request);
 
     const event: VideoValidationRequestedEvent = {
       eventId: input.eventId,
@@ -50,7 +50,7 @@ export class CreateProcessingRequestUseCase {
     };
 
     await this.publisher.publishVideoValidationRequested(event);
-    this.repository.markEventProcessed(
+    await this.repository.markEventProcessed(
       input.eventId,
       request.processingRequestId,
     );

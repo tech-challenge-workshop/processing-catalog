@@ -18,7 +18,6 @@ export class StartProcessingRequestUseCase {
     private readonly repository: ProcessingRequestRepository,
   ) {}
 
-  // eslint-disable-next-line @typescript-eslint/require-await
   async execute(
     input: StartProcessingRequestInput,
   ): Promise<ProcessingRequest> {
@@ -32,14 +31,14 @@ export class StartProcessingRequestUseCase {
       throw new ProcessingRequestDomainError('processingRequestId is required');
     }
 
-    if (this.repository.hasEventBeenProcessed(input.eventId)) {
-      const existing = this.repository.findByEventId(input.eventId);
+    if (await this.repository.hasEventBeenProcessed(input.eventId)) {
+      const existing = await this.repository.findByEventId(input.eventId);
       if (existing) {
         return existing;
       }
     }
 
-    const request = this.repository.findByProcessingRequestId(
+    const request = await this.repository.findByProcessingRequestId(
       input.processingRequestId,
     );
     if (!request) {
@@ -50,8 +49,8 @@ export class StartProcessingRequestUseCase {
 
     const updated = startProcessingRequest(request);
 
-    this.repository.update(updated);
-    this.repository.markEventProcessed(
+    await this.repository.update(updated);
+    await this.repository.markEventProcessed(
       input.eventId,
       updated.processingRequestId,
     );

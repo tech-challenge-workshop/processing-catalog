@@ -53,14 +53,14 @@ export class FailProcessingRequestUseCase {
       );
     }
 
-    if (this.repository.hasEventBeenProcessed(input.eventId)) {
-      const existing = this.repository.findByEventId(input.eventId);
+    if (await this.repository.hasEventBeenProcessed(input.eventId)) {
+      const existing = await this.repository.findByEventId(input.eventId);
       if (existing) {
         return existing;
       }
     }
 
-    const request = this.repository.findByProcessingRequestId(
+    const request = await this.repository.findByProcessingRequestId(
       input.processingRequestId,
     );
     if (!request) {
@@ -71,7 +71,7 @@ export class FailProcessingRequestUseCase {
 
     const updated = failProcessingRequest(request, input.failureCode);
 
-    this.repository.update(updated);
+    await this.repository.update(updated);
 
     await this.publisher.publishTerminalEvent({
       eventId: randomUUID(),
@@ -83,7 +83,7 @@ export class FailProcessingRequestUseCase {
       occurredAt: input.occurredAt,
     });
 
-    this.repository.markEventProcessed(
+    await this.repository.markEventProcessed(
       input.eventId,
       updated.processingRequestId,
     );

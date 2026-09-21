@@ -45,7 +45,7 @@ describe('ProcessingCompletedConsumer', () => {
     // Completion now requires PROCESSING. The start consumer arrives in T11;
     // until then the transition is applied through the domain directly.
     const processing = startProcessingRequest(queued);
-    repository.update(processing);
+    await repository.update(processing);
     return processing;
   };
 
@@ -60,7 +60,7 @@ describe('ProcessingCompletedConsumer', () => {
 
     await consumer.handleMessage(content);
 
-    const found = repository.findByProcessingRequestId(
+    const found = await repository.findByProcessingRequestId(
       request.processingRequestId,
     );
     expect(found?.status).toBe('COMPLETED');
