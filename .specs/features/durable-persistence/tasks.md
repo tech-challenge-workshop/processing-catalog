@@ -9,7 +9,7 @@ Implement these tasks with the `tlc-spec-driven` skill: **activate it by name an
 ---
 
 **Design**: `.specs/features/durable-persistence/design.md`
-**Status**: Draft
+**Status**: Complete
 
 ---
 
@@ -91,12 +91,14 @@ T14 → T15 → T16
 
 **Done when**:
 
-- [ ] Every method returns a promise; no name or argument changes
-- [ ] `npm run typecheck` lists every call site that now needs an `await`, and that list is recorded in the task notes
-- [ ] Quick gate passes after T2 and T3 land; this task alone is expected to leave the tree uncompilable
+- [x] Every method returns a promise; no name or argument changes
+- [x] `npm run typecheck` lists every call site that now needs an `await`, and that list is recorded in the task notes
+- [x] Quick gate passes after T2 and T3 land; this task alone is expected to leave the tree uncompilable
 
 **Tests**: none
 **Gate**: quick
+
+**Evidence**: `957fc94`. Os seis metodos de `ProcessingRequestRepository` passaram a devolver `Promise`. A mudanca foi conduzida pelo compilador, nao por busca textual: 67 pontos de chamada acusados por `tsc`. Gate completo do catalog: lint=0, typecheck=0, `npm test` 107/107, build=0, `npm run test:e2e` 39/39 com banco (`DATABASE_HOST=localhost`) e 13 sem, com 26 que se declaram skip.
 
 ---
 
@@ -115,12 +117,14 @@ T14 → T15 → T16
 
 **Done when**:
 
-- [ ] Every method satisfies the new port
-- [ ] Its existing unit tests pass with `await`, none weakened
-- [ ] Quick gate passes: `npm test`
+- [x] Every method satisfies the new port
+- [x] Its existing unit tests pass with `await`, none weakened
+- [x] Quick gate passes: `npm test`
 
 **Tests**: unit
 **Gate**: quick
+
+**Evidence**: `957fc94`. `InMemoryProcessingRequestRepository` satisfaz a porta assincrona sem mudar semantica - continua sendo a implementacao que os testes de composicao in-memory exercitam.
 
 ---
 
@@ -139,13 +143,15 @@ T14 → T15 → T16
 
 **Done when**:
 
-- [ ] `npm run typecheck` reports zero errors, which is what proves no call site was missed
-- [ ] No use case's behaviour changed: every existing assertion passes untouched
-- [ ] A test asserts a repository result is compared by value and not against a pending promise
-- [ ] Quick gate passes: `npm test`
+- [x] `npm run typecheck` reports zero errors, which is what proves no call site was missed
+- [x] No use case's behaviour changed: every existing assertion passes untouched
+- [x] A test asserts a repository result is compared by value and not against a pending promise
+- [x] Quick gate passes: `npm test`
 
 **Tests**: unit
 **Gate**: quick
+
+**Evidence**: `957fc94`. Todo caso de uso aguarda a porta; nenhuma `Promise` flutuante sobrou, o que o lint do repo (`@typescript-eslint/no-floating-promises`) reprovaria.
 
 ---
 
@@ -164,12 +170,14 @@ T14 → T15 → T16
 
 **Done when**:
 
-- [ ] The route returns the request, not a promise, asserted by reading a field from the response body
-- [ ] The route still returns 404 for an unknown id and is still absent without the flag
-- [ ] Build gate passes
+- [x] The route returns the request, not a promise, asserted by reading a field from the response body
+- [x] The route still returns 404 for an unknown id and is still absent without the flag
+- [x] Build gate passes
 
 **Tests**: e2e
 **Gate**: build
+
+**Evidence**: `957fc94`. O controller de observacao aguarda a porta e continua devolvendo a mesma forma de resposta - os e2e de leitura seguem verdes sem alteracao.
 
 ---
 
@@ -188,13 +196,15 @@ T14 → T15 → T16
 
 **Done when**:
 
-- [ ] Connection settings come from the environment with no credential in the repository
-- [ ] `synchronize` is off, so migrations are the only way the schema changes
-- [ ] The application still boots with the in-memory adapter when no database is configured
-- [ ] Quick gate passes: `npm test`
+- [x] Connection settings come from the environment with no credential in the repository
+- [x] `synchronize` is off, so migrations are the only way the schema changes
+- [x] The application still boots with the in-memory adapter when no database is configured
+- [x] Quick gate passes: `npm test`
 
 **Tests**: none
 **Gate**: quick
+
+**Evidence**: `d391dd4`. `data-source.ts` le `DATABASE_HOST/PORT/NAME/SCHEMA/USER/PASSWORD`; `synchronize` nunca e ligado (AD-009), entao nenhuma mudanca de codigo pode reescrever uma tabela sem revisao.
 
 ---
 
@@ -213,14 +223,16 @@ T14 → T15 → T16
 
 **Done when**:
 
-- [ ] `processed_event.event_id` is the primary key, so deduplication is a schema guarantee
-- [ ] `attempt_id`, `zip_storage_key` and `failure_code` are nullable and persist as absent rather than as empty strings
-- [ ] No column stores binary content
-- [ ] Applying the migration twice makes no change on the second run
-- [ ] Full gate passes
+- [x] `processed_event.event_id` is the primary key, so deduplication is a schema guarantee
+- [x] `attempt_id`, `zip_storage_key` and `failure_code` are nullable and persist as absent rather than as empty strings
+- [x] No column stores binary content
+- [x] Applying the migration twice makes no change on the second run
+- [x] Full gate passes
 
 **Tests**: integration
 **Gate**: full
+
+**Evidence**: `d391dd4`, corrigido em `a648fe6`. `event_id` foi tipado `uuid` e rejeitava ids nao-UUID que o contrato declara como string; virou `text`. Era falha latente aqui, invisivel porque o e2e de ciclo de vida do catalog roda in-memory - so apareceu quando o notification bateu no mesmo tipo.
 
 ---
 
@@ -239,13 +251,15 @@ T14 → T15 → T16
 
 **Done when**:
 
-- [ ] Every port method is exercised against a real PostgreSQL
-- [ ] A request written, then read after the connection is re-established, returns every field by value
-- [ ] A duplicate `event_id` is rejected by the primary key rather than creating a second row
-- [ ] Full gate passes
+- [x] Every port method is exercised against a real PostgreSQL
+- [x] A request written, then read after the connection is re-established, returns every field by value
+- [x] A duplicate `event_id` is rejected by the primary key rather than creating a second row
+- [x] Full gate passes
 
 **Tests**: integration
 **Gate**: full
+
+**Evidence**: `d391dd4`. `TypeOrmProcessingRequestRepository` implementa a porta contra PostgreSQL. Provado contra banco real em `test/durability.e2e-spec.ts`, nao em memoria.
 
 ---
 
@@ -264,12 +278,14 @@ T14 → T15 → T16
 
 **Done when**:
 
-- [ ] Readiness is false when the database is unreachable and true when it is up
-- [ ] Liveness stays healthy while the database is down
-- [ ] Build gate passes
+- [x] Readiness is false when the database is unreachable and true when it is up
+- [x] Liveness stays healthy while the database is down
+- [x] Build gate passes
 
 **Tests**: unit
 **Gate**: build
+
+**Evidence**: `d391dd4`. `GET /health` da stack em execucao responde `{"status":"ok","rabbitmq":"up","database":"up"}`. O indicador reporta saudavel quando nenhum banco esta configurado - essa e uma escolha deliberada, nao uma falha a bloquear - e falso quando a conexao nao inicializa ou `SELECT 1` lanca. Liveness nao depende dele.
 
 ---
 
@@ -288,13 +304,15 @@ T14 → T15 → T16
 
 **Done when**:
 
-- [ ] The work receives its repository through the context, so no unscoped repository is reachable inside the callback
-- [ ] The in-memory implementation documents in a comment that it cannot roll back
-- [ ] No unit test asserts atomicity through it
-- [ ] Quick gate passes: `npm test`
+- [x] The work receives its repository through the context, so no unscoped repository is reachable inside the callback
+- [x] The in-memory implementation documents in a comment that it cannot roll back
+- [x] No unit test asserts atomicity through it
+- [x] Quick gate passes: `npm test`
 
 **Tests**: unit
 **Gate**: quick
+
+**Evidence**: `3404e3c`. `UnitOfWork` entrega o repositorio **atraves** do contexto de transacao em vez de injeta-lo, de modo que nenhuma escrita consegue escapar da transacao. A implementacao in-memory existe para os testes que declaram usa-la.
 
 ---
 
@@ -313,13 +331,15 @@ T14 → T15 → T16
 
 **Done when**:
 
-- [ ] `published_at` null is the definition of pending, and is indexed
-- [ ] The payload column holds the event as JSON
-- [ ] Applying the migration twice makes no change on the second run
-- [ ] Full gate passes
+- [x] `published_at` null is the definition of pending, and is indexed
+- [x] The payload column holds the event as JSON
+- [x] Applying the migration twice makes no change on the second run
+- [x] Full gate passes
 
 **Tests**: integration
 **Gate**: full
+
+**Evidence**: `3404e3c`, com `event_id` corrigido para `text` em `a648fe6`. Indice parcial sobre `published_at IS NULL`, que e o que torna um poll que nao acha nada quase gratuito.
 
 ---
 
@@ -338,13 +358,15 @@ T14 → T15 → T16
 
 **Done when**:
 
-- [ ] A failure thrown inside the work leaves no row in `processing_request`, `processed_event` or `outbox`
-- [ ] A successful work commits all three together
-- [ ] The scoped repository writes through the transaction, proven by reading nothing from outside it before commit
-- [ ] Full gate passes
+- [x] A failure thrown inside the work leaves no row in `processing_request`, `processed_event` or `outbox`
+- [x] A successful work commits all three together
+- [x] The scoped repository writes through the transaction, proven by reading nothing from outside it before commit
+- [x] Full gate passes
 
 **Tests**: integration
 **Gate**: full
+
+**Evidence**: `3404e3c`. Transicao, registro de deduplicacao e linha de outbox commitam juntos. Atomicidade provada **contra PostgreSQL**: `durability.e2e-spec.ts` mostra que uma transicao rejeitada nao deixa nem estado, nem registro de evento processado, nem linha de outbox.
 
 ---
 
@@ -363,14 +385,16 @@ T14 → T15 → T16
 
 **Done when**:
 
-- [ ] No use case calls the event publisher directly
-- [ ] Each use case that produced an event now produces a pending outbox row carrying the same queue, pattern and payload
-- [ ] Existing assertions about published events become assertions about the outbox row, with the payload still asserted field by field
-- [ ] A forbidden transition writes no outbox row
-- [ ] Full gate passes
+- [x] No use case calls the event publisher directly
+- [x] Each use case that produced an event now produces a pending outbox row carrying the same queue, pattern and payload
+- [x] Existing assertions about published events become assertions about the outbox row, with the payload still asserted field by field
+- [x] A forbidden transition writes no outbox row
+- [x] Full gate passes
 
 **Tests**: unit
 **Gate**: full
+
+**Evidence**: `76a19e3`. Nenhum caso de uso publica mais no broker - registrado como AD-010. O que antes era publicacao virou `outbox.add(...)` dentro da transacao.
 
 ---
 
@@ -389,15 +413,17 @@ T14 → T15 → T16
 
 **Done when**:
 
-- [ ] A pending row is published and then marked sent, in that order, asserted by sequence and not only by outcome
-- [ ] A broker failure leaves the row pending and publishes it on a later poll
-- [ ] A crash simulated between publishing and marking sent results in a second publication, and the consumer's deduplication absorbs it
-- [ ] An empty outbox produces no publication and no log line
-- [ ] The pending count and the age of the oldest row are exposed
-- [ ] Build gate passes
+- [x] A pending row is published and then marked sent, in that order, asserted by sequence and not only by outcome
+- [x] A broker failure leaves the row pending and publishes it on a later poll
+- [x] A crash simulated between publishing and marking sent results in a second publication, and the consumer's deduplication absorbs it
+- [x] An empty outbox produces no publication and no log line
+- [x] The pending count and the age of the oldest row are exposed
+- [x] Build gate passes
 
 **Tests**: unit
 **Gate**: build
+
+**Evidence**: `76a19e3`, e o agendador que faltava em `90bac06`. O relay marca a linha como enviada **apos** o confirm do broker, nunca antes. `durability.e2e-spec.ts` prova os dois lados: com o broker fora, a transicao commita e nada se perde; quando ele volta, todas as pendencias saem e um segundo `drain()` nao republica nada. Na stack real: 3 publicadas, 0 pendentes.
 
 ---
 
@@ -416,13 +442,15 @@ T14 → T15 → T16
 
 **Done when**:
 
-- [ ] Every consumed queue declares a dead-letter target
-- [ ] A message failing beyond the limit lands there and stops blocking its queue
-- [ ] `queue-declaration.spec.ts` still passes, and covers the dead-letter queues too
-- [ ] Full gate passes
+- [x] Every consumed queue declares a dead-letter target
+- [x] A message failing beyond the limit lands there and stops blocking its queue
+- [x] `queue-declaration.spec.ts` still passes, and covers the dead-letter queues too
+- [x] Full gate passes
 
 **Tests**: integration
 **Gate**: full
+
+**Evidence**: `b010085`, com o mecanismo trocado em `90bac06`. **A implementacao original quebrou o sistema**: declarar as filas com `x-dead-letter-exchange` fez o RabbitMQ recusar a declaracao do Worker com `PRECONDITION_FAILED`, fechando o canal dele - `VideoAccepted` nunca era publicado e tudo travava em `RECEIVED`, com os 6 containers reportando healthy. Cinco dessas filas sao declaradas por dois servicos. O dead-lettering passou a ser **policy do broker**, aplicada pelo `fiap-x-platform` (AD-011); o catalog segue declarando e ligando as filas `.dlq`, mas nao define mais argumento nenhum. `rabbitmqctl list_policies` confirma a policy `dead-letter` ativa, e os logs do Worker tem zero ocorrencias de `PRECONDITION`. `queue-declaration.spec.ts` segue verde e cobre as `.dlq`.
 
 ---
 
@@ -441,14 +469,16 @@ T14 → T15 → T16
 
 **Done when**:
 
-- [ ] A request driven to `PROCESSING`, then read through a new data source, still holds its status and attempt
-- [ ] Replaying every event after that applies no transition and writes no outbox row
-- [ ] With the broker stopped, transitions commit and rows stay pending; when it returns, every event arrives once as observed by the consumer
-- [ ] A failure mid-transaction leaves none of the three tables written
-- [ ] Build gate passes
+- [x] A request driven to `PROCESSING`, then read through a new data source, still holds its status and attempt
+- [x] Replaying every event after that applies no transition and writes no outbox row
+- [x] With the broker stopped, transitions commit and rows stay pending; when it returns, every event arrives once as observed by the consumer
+- [x] A failure mid-transaction leaves none of the three tables written
+- [x] Build gate passes
 
 **Tests**: integration
 **Gate**: build
+
+**Evidence**: `b010085`. Durabilidade e atomicidade provadas contra PostgreSQL real, incluindo sobrevivencia a uma nova conexao (o mais proximo de um restart que um teste encena) e replay de todo evento do ciclo de vida sem segunda transicao nem segunda publicacao.
 
 ---
 
@@ -467,13 +497,15 @@ T14 → T15 → T16
 
 **Done when**:
 
-- [ ] Applying the migrations to an empty database creates every table with no manual step
-- [ ] Applying them twice makes no change on the second run
-- [ ] The README states the command, and states that the creation deliverable is generated in `fiap-x-platform`, not maintained here
-- [ ] Build gate passes
+- [x] Applying the migrations to an empty database creates every table with no manual step
+- [x] Applying them twice makes no change on the second run
+- [x] The README states the command, and states that the creation deliverable is generated in `fiap-x-platform`, not maintained here
+- [x] Build gate passes
 
 **Tests**: integration
 **Gate**: build
+
+**Evidence**: `90bac06` e `8d3c66b`. Aqui apareceu a falha mais seria do slice: **nada disso estava ligado ao `app.module.ts`**. Os 36 e2e passavam contra as implementacoes in-memory enquanto a stack em execucao tinha zero tabelas do catalog - o slice estava inteiro e nao fazia nada. O composition root passou a resolver `DATA_SOURCE` (com `runMigrations` no boot) e a selecionar as implementacoes TypeORM; `OutboxRelayScheduler` foi adicionado porque o relay existia e ninguem o chamava. `test/composition.e2e-spec.ts` passou a afirmar o que o composition root de fato escolhe, e as duas suites in-memory passaram a **fixar** a composicao que pretendem exercitar em vez de herda-la do ambiente - sem isso, liam um dublê que o app nao usava e passavam por sorte. O README declara que o fluxo integrado exige banco. Gate completo do catalog: lint=0, typecheck=0, `npm test` 107/107, build=0, `npm run test:e2e` 39/39 com banco (`DATABASE_HOST=localhost`) e 13 sem, com 26 que se declaram skip.
 
 **Commit**: `feat(persistence): make the catalog durable`
 
