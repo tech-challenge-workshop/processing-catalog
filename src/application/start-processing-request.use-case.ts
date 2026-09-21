@@ -1,30 +1,26 @@
 import { Inject } from '@nestjs/common';
-import { randomUUID } from 'crypto';
 import {
   ProcessingRequest,
   ProcessingRequestDomainError,
-  completeProcessingRequest,
+  startProcessingRequest,
 } from '../domain/processing-request';
 import type { ProcessingRequestRepository } from '../domain/processing-request.repository';
-import type { EventPublisher } from './event-publisher';
 
-export interface CompleteProcessingRequestInput {
+export interface StartProcessingRequestInput {
   eventId: string;
   processingRequestId: string;
-  zipStorageKey: string;
   occurredAt: string;
 }
 
-export class CompleteProcessingRequestUseCase {
+export class StartProcessingRequestUseCase {
   constructor(
     @Inject('ProcessingRequestRepository')
     private readonly repository: ProcessingRequestRepository,
-    @Inject('EventPublisher')
-    private readonly publisher: EventPublisher,
   ) {}
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async execute(
-    input: CompleteProcessingRequestInput,
+    input: StartProcessingRequestInput,
   ): Promise<ProcessingRequest> {
     if (!input.eventId || input.eventId.trim().length === 0) {
       throw new ProcessingRequestDomainError('eventId is required');
@@ -34,9 +30,6 @@ export class CompleteProcessingRequestUseCase {
       input.processingRequestId.trim().length === 0
     ) {
       throw new ProcessingRequestDomainError('processingRequestId is required');
-    }
-    if (!input.zipStorageKey || input.zipStorageKey.trim().length === 0) {
-      throw new ProcessingRequestDomainError('zipStorageKey is required');
     }
 
     if (this.repository.hasEventBeenProcessed(input.eventId)) {
@@ -55,24 +48,16 @@ export class CompleteProcessingRequestUseCase {
       );
     }
 
-    const updated = completeProcessingRequest(request, input.zipStorageKey);
+    const updated = startProcessingRequest(request);
 
     this.repository.update(updated);
-
-    await this.publisher.publishTerminalEvent({
-      eventId: randomUUID(),
-      processingRequestId: updated.processingRequestId,
-      ownerUserId: updated.ownerUserId,
-      status: updated.status,
-      zipStorageKey: updated.zipStorageKey,
-      occurredAt: input.occurredAt,
-    });
-
     this.repository.markEventProcessed(
       input.eventId,
       updated.processingRequestId,
     );
 
+    // Entering PROCESSING publishes nothing: it is not a terminal outcome and
+    // no other service acts on it.
     return updated;
   }
 }

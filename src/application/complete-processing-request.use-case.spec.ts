@@ -1,5 +1,8 @@
 import { randomUUID } from 'crypto';
-import { ProcessingRequestStatus } from '../domain/processing-request';
+import {
+  ProcessingRequestStatus,
+  startProcessingRequest,
+} from '../domain/processing-request';
 import { InMemoryProcessingRequestRepository } from '../infrastructure/in-memory-processing-request.repository';
 import { InMemoryEventPublisher } from '../infrastructure/in-memory-event-publisher';
 import { AcceptProcessingRequestUseCase } from './accept-processing-request.use-case';
@@ -31,11 +34,17 @@ describe('CompleteProcessingRequestUseCase', () => {
       repository,
       publisher,
     );
-    return acceptUseCase.execute({
+    const queued = await acceptUseCase.execute({
       eventId: 'accept-event-1',
       processingRequestId: request.processingRequestId,
       occurredAt: new Date().toISOString(),
     });
+
+    // Completion now requires PROCESSING. The start use case arrives in T7;
+    // until then the transition is applied through the domain directly.
+    const processing = startProcessingRequest(queued);
+    repository.update(processing);
+    return processing;
   };
 
   it('transitions a request from QUEUED to COMPLETED and publishes TerminalEvent', async () => {

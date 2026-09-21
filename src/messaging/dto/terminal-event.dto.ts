@@ -5,6 +5,11 @@ export interface TerminalEventDto {
   processingRequestId: string;
   ownerUserId: string;
   status: ProcessingRequestStatus;
-  zipStorageKey: string;
+  /** Present when the request completed. Mutually exclusive with failureReason. */
+  zipStorageKey?: string;
+  /** Present when the request failed. Already safe for a user to read. */
+  failureReason?: string;
+  /** Absent when the request failed before any attempt started. */
+  attemptId?: string;
   occurredAt: string;
 }

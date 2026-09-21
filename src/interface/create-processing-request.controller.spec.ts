@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import supertest, { SuperTest, Test as RequestTest } from 'supertest';
+import supertest from 'supertest';
 import { CreateProcessingRequestController } from './create-processing-request.controller';
 import { CreateProcessingRequestUseCase } from '../application/create-processing-request.use-case';
 import { InMemoryProcessingRequestRepository } from '../infrastructure/in-memory-processing-request.repository';
@@ -17,7 +17,7 @@ interface CreateProcessingRequestResponse {
 describe('CreateProcessingRequestController (integration)', () => {
   let app: INestApplication;
   let publisher: InMemoryEventPublisher;
-  let request: SuperTest<RequestTest>;
+  let request: ReturnType<typeof supertest>;
 
   beforeEach(async () => {
     const repository = new InMemoryProcessingRequestRepository();

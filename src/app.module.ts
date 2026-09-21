@@ -5,6 +5,8 @@ import { CreateProcessingRequestController } from './interface/create-processing
 import { CreateProcessingRequestUseCase } from './application/create-processing-request.use-case';
 import { AcceptProcessingRequestUseCase } from './application/accept-processing-request.use-case';
 import { CompleteProcessingRequestUseCase } from './application/complete-processing-request.use-case';
+import { StartProcessingRequestUseCase } from './application/start-processing-request.use-case';
+import { FailProcessingRequestUseCase } from './application/fail-processing-request.use-case';
 import { InMemoryProcessingRequestRepository } from './infrastructure/in-memory-processing-request.repository';
 import { InMemoryEventPublisher } from './infrastructure/in-memory-event-publisher';
 import { RabbitMQModule } from './infrastructure/rabbitmq/rabbitmq.module';
@@ -12,6 +14,9 @@ import { RabbitMQEventPublisher } from './infrastructure/rabbitmq/rabbitmq.event
 import { RabbitMQHealthIndicator } from './infrastructure/rabbitmq/rabbitmq.health-indicator';
 import { VideoAcceptedConsumer } from './infrastructure/rabbitmq/video-accepted.consumer';
 import { ProcessingCompletedConsumer } from './infrastructure/rabbitmq/processing-completed.consumer';
+import { VideoRejectedConsumer } from './infrastructure/rabbitmq/video-rejected.consumer';
+import { ProcessingStartedConsumer } from './infrastructure/rabbitmq/processing-started.consumer';
+import { ProcessingFailedConsumer } from './infrastructure/rabbitmq/processing-failed.consumer';
 import { HealthController } from './interface/health.controller';
 import { ProcessingRequestObservationController } from './interface/processing-request-observation.controller';
 
@@ -30,6 +35,8 @@ const isLocalIntegration = () => process.env.LOCAL_INTEGRATION === 'true';
     CreateProcessingRequestUseCase,
     AcceptProcessingRequestUseCase,
     CompleteProcessingRequestUseCase,
+    StartProcessingRequestUseCase,
+    FailProcessingRequestUseCase,
     InMemoryProcessingRequestRepository,
     {
       provide: 'ProcessingRequestRepository',
@@ -45,6 +52,9 @@ const isLocalIntegration = () => process.env.LOCAL_INTEGRATION === 'true';
     RabbitMQHealthIndicator,
     VideoAcceptedConsumer,
     ProcessingCompletedConsumer,
+    VideoRejectedConsumer,
+    ProcessingStartedConsumer,
+    ProcessingFailedConsumer,
   ],
 })
 export class AppModule {}
