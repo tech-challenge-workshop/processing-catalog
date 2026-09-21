@@ -1,7 +1,10 @@
 import { AcceptProcessingRequestUseCase } from '../../application/accept-processing-request.use-case';
 import { CompleteProcessingRequestUseCase } from '../../application/complete-processing-request.use-case';
 import { CreateProcessingRequestUseCase } from '../../application/create-processing-request.use-case';
-import { ProcessingRequestDomainError } from '../../domain/processing-request';
+import {
+  ProcessingRequestDomainError,
+  startProcessingRequest,
+} from '../../domain/processing-request';
 import { InMemoryEventPublisher } from '../in-memory-event-publisher';
 import { InMemoryProcessingRequestRepository } from '../in-memory-processing-request.repository';
 import { ProcessingCompletedConsumer } from './processing-completed.consumer';
@@ -33,11 +36,17 @@ describe('ProcessingCompletedConsumer', () => {
       repository,
       publisher,
     );
-    return acceptUseCase.execute({
+    const queued = await acceptUseCase.execute({
       eventId: 'accept-event-1',
       processingRequestId: request.processingRequestId,
       occurredAt: new Date().toISOString(),
     });
+
+    // Completion now requires PROCESSING. The start consumer arrives in T11;
+    // until then the transition is applied through the domain directly.
+    const processing = startProcessingRequest(queued);
+    repository.update(processing);
+    return processing;
   };
 
   it('processes a valid ProcessingCompleted event', async () => {

@@ -6,7 +6,10 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { RabbitMQConnection } from '../src/infrastructure/rabbitmq/rabbitmq.connection';
 import { InMemoryProcessingRequestRepository } from '../src/infrastructure/in-memory-processing-request.repository';
-import { ProcessingRequestStatus } from '../src/domain/processing-request';
+import {
+  ProcessingRequestStatus,
+  startProcessingRequest,
+} from '../src/domain/processing-request';
 
 interface CreateProcessingRequestResponse {
   processingRequestId: string;
@@ -194,6 +197,11 @@ describe('Local Docker Integration (e2e)', () => {
       attemptId: string;
     };
     expect(queuedEvent.attemptId).toBe(queued?.attemptId);
+
+    // Completion now requires PROCESSING. The processing.started consumer
+    // arrives in T11; until then the transition is applied directly so this
+    // suite keeps exercising the completion path. T14 drives the real event.
+    repository.update(startProcessingRequest(queued!));
 
     fakeConnection.deliver('processing.completed', {
       eventId: 'processing-completed-1',

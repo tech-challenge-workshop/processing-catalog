@@ -2,6 +2,9 @@ import {
   ProcessingRequestStatus,
   acceptProcessingRequest,
   completeProcessingRequest,
+  failProcessingRequest,
+  isFailureCode,
+  startProcessingRequest,
   createProcessingRequest,
 } from './processing-request';
 
@@ -60,12 +63,14 @@ describe('ProcessingRequest', () => {
     );
   });
 
-  it('transitions QUEUED to COMPLETED and stores the zipStorageKey', () => {
-    const request = acceptProcessingRequest(
-      createProcessingRequest({
-        ownerUserId: 'user-123',
-        sourceStorageKey: 'videos/input.mp4',
-      }),
+  it('transitions PROCESSING to COMPLETED and stores the zipStorageKey', () => {
+    const request = startProcessingRequest(
+      acceptProcessingRequest(
+        createProcessingRequest({
+          ownerUserId: 'user-123',
+          sourceStorageKey: 'videos/input.mp4',
+        }),
+      ),
     );
 
     const completed = completeProcessingRequest(request, 'zips/output.zip');
@@ -110,17 +115,169 @@ describe('ProcessingRequest', () => {
   });
 
   it('rejects completion without a zipStorageKey', () => {
-    const request = acceptProcessingRequest(
-      createProcessingRequest({
-        ownerUserId: 'user-123',
-        sourceStorageKey: 'videos/input.mp4',
-      }),
+    const request = startProcessingRequest(
+      acceptProcessingRequest(
+        createProcessingRequest({
+          ownerUserId: 'user-123',
+          sourceStorageKey: 'videos/input.mp4',
+        }),
+      ),
     );
 
     expect(() => completeProcessingRequest(request, '')).toThrow(
       'zipStorageKey is required',
     );
 
+    expect(request.status).toBe(ProcessingRequestStatus.PROCESSING);
+  });
+
+  const queued = () =>
+    acceptProcessingRequest(
+      createProcessingRequest({
+        ownerUserId: 'user-123',
+        sourceStorageKey: 'videos/input.mp4',
+      }),
+    );
+
+  const received = () =>
+    createProcessingRequest({
+      ownerUserId: 'user-123',
+      sourceStorageKey: 'videos/input.mp4',
+    });
+
+  describe('startProcessingRequest', () => {
+    it('transitions QUEUED to PROCESSING and refreshes updatedAt', () => {
+      const request = queued();
+
+      const started = startProcessingRequest(request);
+
+      expect(started.status).toBe(ProcessingRequestStatus.PROCESSING);
+      expect(started.attemptId).toBe(request.attemptId);
+      expect(started.updatedAt.getTime()).toBeGreaterThanOrEqual(
+        request.updatedAt.getTime(),
+      );
+    });
+
+    it('rejects a RECEIVED request and leaves it unchanged', () => {
+      const request = received();
+
+      expect(() => startProcessingRequest(request)).toThrow(
+        'Cannot start request in RECEIVED status',
+      );
+      expect(request.status).toBe(ProcessingRequestStatus.RECEIVED);
+    });
+
+    it('rejects a request that already started, so a replay creates no second start', () => {
+      const request = startProcessingRequest(queued());
+
+      expect(() => startProcessingRequest(request)).toThrow(
+        'Cannot start request in PROCESSING status',
+      );
+      expect(request.status).toBe(ProcessingRequestStatus.PROCESSING);
+    });
+
+    it('rejects a terminal request', () => {
+      const completed = completeProcessingRequest(
+        startProcessingRequest(queued()),
+        'zips/output.zip',
+      );
+
+      expect(() => startProcessingRequest(completed)).toThrow(
+        'Cannot start request in COMPLETED status',
+      );
+    });
+  });
+
+  describe('failProcessingRequest', () => {
+    it('fails a RECEIVED request and records the code', () => {
+      const request = received();
+
+      const failed = failProcessingRequest(request, 'FORMATO_INVALIDO');
+
+      expect(failed.status).toBe(ProcessingRequestStatus.FAILED);
+      expect(failed.failureCode).toBe('FORMATO_INVALIDO');
+      expect(request.status).toBe(ProcessingRequestStatus.RECEIVED);
+    });
+
+    it('fails a QUEUED request and records the code', () => {
+      const failed = failProcessingRequest(queued(), 'DURACAO_EXCEDIDA');
+
+      expect(failed.status).toBe(ProcessingRequestStatus.FAILED);
+      expect(failed.failureCode).toBe('DURACAO_EXCEDIDA');
+    });
+
+    it('fails a PROCESSING request and keeps its attemptId', () => {
+      const processing = startProcessingRequest(queued());
+
+      const failed = failProcessingRequest(processing, 'PROCESSAMENTO_FALHOU');
+
+      expect(failed.status).toBe(ProcessingRequestStatus.FAILED);
+      expect(failed.failureCode).toBe('PROCESSAMENTO_FALHOU');
+      expect(failed.attemptId).toBe(processing.attemptId);
+    });
+
+    it('rejects a request that already failed, leaving its code unchanged', () => {
+      const failed = failProcessingRequest(queued(), 'DURACAO_EXCEDIDA');
+
+      expect(() => failProcessingRequest(failed, 'FORMATO_INVALIDO')).toThrow(
+        'Cannot fail request in FAILED status',
+      );
+      expect(failed.failureCode).toBe('DURACAO_EXCEDIDA');
+    });
+
+    it('rejects a completed request, leaving its stored state unchanged', () => {
+      const completed = completeProcessingRequest(
+        startProcessingRequest(queued()),
+        'zips/output.zip',
+      );
+
+      expect(() =>
+        failProcessingRequest(completed, 'PROCESSAMENTO_FALHOU'),
+      ).toThrow('Cannot fail request in COMPLETED status');
+      expect(completed.status).toBe(ProcessingRequestStatus.COMPLETED);
+      expect(completed.failureCode).toBeUndefined();
+    });
+
+    it('rejects a code outside the vocabulary rather than storing it', () => {
+      const request = queued();
+
+      expect(() =>
+        failProcessingRequest(
+          request,
+          'INVENTADO' as unknown as Parameters<typeof failProcessingRequest>[1],
+        ),
+      ).toThrow('Unknown failure code INVENTADO');
+      expect(request.status).toBe(ProcessingRequestStatus.QUEUED);
+    });
+  });
+
+  describe('isFailureCode', () => {
+    it('accepts every code in the vocabulary', () => {
+      for (const code of [
+        'FORMATO_INVALIDO',
+        'DURACAO_EXCEDIDA',
+        'PROCESSAMENTO_FALHOU',
+      ]) {
+        expect(isFailureCode(code)).toBe(true);
+      }
+    });
+
+    it('rejects anything else', () => {
+      expect(isFailureCode('OUTRO')).toBe(false);
+      expect(isFailureCode(undefined)).toBe(false);
+    });
+  });
+
+  it('creates a request with no failure code', () => {
+    expect(received().failureCode).toBeUndefined();
+  });
+
+  it('rejects completion from QUEUED, because a completion without a start means a lost ProcessingStarted', () => {
+    const request = queued();
+
+    expect(() => completeProcessingRequest(request, 'zips/out.zip')).toThrow(
+      'Cannot complete request in QUEUED status',
+    );
     expect(request.status).toBe(ProcessingRequestStatus.QUEUED);
   });
 });
