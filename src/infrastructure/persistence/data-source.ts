@@ -1,6 +1,7 @@
 import { DataSource, DataSourceOptions } from 'typeorm';
 import { ProcessingRequestEntity } from './processing-request.entity';
 import { ProcessedEventEntity } from './processed-event.entity';
+import { OutboxEntity } from './outbox.entity';
 
 export const DATA_SOURCE = 'DATA_SOURCE';
 
@@ -23,7 +24,7 @@ export function buildDataSourceOptions(): DataSourceOptions {
     schema: process.env.DATABASE_SCHEMA ?? 'catalog',
     username: process.env.DATABASE_USER ?? 'catalog',
     password: process.env.DATABASE_PASSWORD ?? 'catalog',
-    entities: [ProcessingRequestEntity, ProcessedEventEntity],
+    entities: [ProcessingRequestEntity, ProcessedEventEntity, OutboxEntity],
     migrations: [__dirname + '/migrations/*.{ts,js}'],
     // Off on purpose: migrations are the only way this schema changes, so a
     // running service can never silently reshape a table under itself.
