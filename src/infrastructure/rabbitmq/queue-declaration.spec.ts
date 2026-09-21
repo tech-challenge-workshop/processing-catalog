@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
-import { RABBITMQ_QUEUES } from './rabbitmq.connection';
+import { RABBITMQ_QUEUES, deadLetterQueueFor } from './rabbitmq.connection';
 
 /**
  * A consumer that subscribes to a queue nobody declared dies at startup with
@@ -38,5 +38,17 @@ describe('queue declaration', () => {
     );
 
     expect(undeclared).toEqual([]);
+  });
+
+  it('names a distinct dead-letter queue for every declared queue', () => {
+    const dlqs = RABBITMQ_QUEUES.map(deadLetterQueueFor);
+
+    expect(new Set(dlqs).size).toBe(RABBITMQ_QUEUES.length);
+    for (const queue of RABBITMQ_QUEUES) {
+      expect(deadLetterQueueFor(queue)).toBe(`${queue}.dlq`);
+      // A dead-letter queue must never collide with a main queue, or a
+      // rejected message would be redelivered to the consumer that rejected it.
+      expect(RABBITMQ_QUEUES).not.toContain(deadLetterQueueFor(queue));
+    }
   });
 });
