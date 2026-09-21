@@ -9,6 +9,39 @@ import { InMemoryProcessingRequestRepository } from '../src/infrastructure/in-me
 import { InMemoryOutboxWriter } from '../src/infrastructure/in-memory-unit-of-work';
 import { ProcessingRequestStatus } from '../src/domain/processing-request';
 
+// This suite exercises the in-memory composition. It pins DATABASE_HOST off
+// rather than inheriting it: with a database configured the composition root
+// selects TypeORM, and the in-memory doubles this suite reads would still
+// resolve from the container while the app used something else entirely -
+// asserting against a bystander. That is the same shape as the wiring gap
+// composition.e2e-spec.ts now guards.
+const databaseEnv = [
+  'DATABASE_HOST',
+  'DATABASE_PORT',
+  'DATABASE_NAME',
+  'DATABASE_SCHEMA',
+  'DATABASE_USER',
+  'DATABASE_PASSWORD',
+] as const;
+const savedDatabaseEnv: Record<string, string | undefined> = {};
+
+beforeAll(() => {
+  for (const key of databaseEnv) {
+    savedDatabaseEnv[key] = process.env[key];
+    delete process.env[key];
+  }
+});
+
+afterAll(() => {
+  for (const key of databaseEnv) {
+    if (savedDatabaseEnv[key] === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = savedDatabaseEnv[key];
+    }
+  }
+});
+
 interface CreateProcessingRequestResponse {
   processingRequestId: string;
   status: string;

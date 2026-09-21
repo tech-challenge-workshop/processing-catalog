@@ -74,18 +74,21 @@ export class RabbitMQConnection implements OnModuleInit, OnModuleDestroy {
       await channel.assertExchange(RABBITMQ_DLX, 'topic', { durable: true });
 
       for (const routingKey of RABBITMQ_QUEUES) {
-        // The dead-letter queue is declared first: a main queue naming a
-        // target that does not exist would silently drop what it rejects.
+        // The dead-letter queue is declared here, but dead-lettering itself
+        // is NOT set as a queue argument. Five of these queues are also
+        // declared by the Worker, and RabbitMQ rejects a second declaration
+        // whose arguments differ - which took the Worker's channel down with
+        // `PRECONDITION_FAILED - inequivalent arg 'x-dead-letter-exchange'`.
+        //
+        // The routing is applied as a broker policy by fiap-x-platform, which
+        // owns the topology. A policy binds no declarer, so no service can
+        // contradict another.
         const dlq = deadLetterQueueFor(routingKey);
         await channel.assertQueue(dlq, { durable: true });
         await channel.bindQueue(dlq, RABBITMQ_DLX, routingKey);
 
         const queue = await channel.assertQueue(routingKey, {
           durable: true,
-          arguments: {
-            'x-dead-letter-exchange': RABBITMQ_DLX,
-            'x-dead-letter-routing-key': routingKey,
-          },
         });
         await channel.bindQueue(queue.queue, RABBITMQ_EXCHANGE, routingKey);
       }
