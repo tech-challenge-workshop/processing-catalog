@@ -1,3 +1,7 @@
+import {
+  InMemoryOutboxWriter,
+  InMemoryUnitOfWork,
+} from '../in-memory-unit-of-work';
 import { randomUUID } from 'crypto';
 import {
   ProcessingRequestStatus,
@@ -7,7 +11,6 @@ import { AcceptProcessingRequestUseCase } from '../../application/accept-process
 import { CreateProcessingRequestUseCase } from '../../application/create-processing-request.use-case';
 import { FailProcessingRequestUseCase } from '../../application/fail-processing-request.use-case';
 import { StartProcessingRequestUseCase } from '../../application/start-processing-request.use-case';
-import { InMemoryEventPublisher } from '../in-memory-event-publisher';
 import { InMemoryProcessingRequestRepository } from '../in-memory-processing-request.repository';
 import { ProcessingFailedConsumer } from './processing-failed.consumer';
 import { ProcessingStartedConsumer } from './processing-started.consumer';
@@ -16,16 +19,18 @@ import { VideoRejectedConsumer } from './video-rejected.consumer';
 
 describe('lifecycle consumers', () => {
   let repository: InMemoryProcessingRequestRepository;
-  let publisher: InMemoryEventPublisher;
+  let outbox: InMemoryOutboxWriter;
+  let unitOfWork: InMemoryUnitOfWork;
   const connection = {} as RabbitMQConnection;
 
   beforeEach(() => {
     repository = new InMemoryProcessingRequestRepository();
-    publisher = new InMemoryEventPublisher();
+    outbox = new InMemoryOutboxWriter();
+    unitOfWork = new InMemoryUnitOfWork(repository, outbox);
   });
 
   const received = () =>
-    new CreateProcessingRequestUseCase(repository, publisher).execute({
+    new CreateProcessingRequestUseCase(repository, unitOfWork).execute({
       eventId: randomUUID(),
       ownerUserId: 'user-123',
       sourceStorageKey: 'videos/input.mp4',
@@ -33,7 +38,7 @@ describe('lifecycle consumers', () => {
 
   const queued = async () => {
     const created = await received();
-    return new AcceptProcessingRequestUseCase(repository, publisher).execute({
+    return new AcceptProcessingRequestUseCase(repository, unitOfWork).execute({
       eventId: randomUUID(),
       processingRequestId: created.processingRequestId,
       occurredAt: new Date().toISOString(),
@@ -44,12 +49,12 @@ describe('lifecycle consumers', () => {
     const consumer = () =>
       new VideoRejectedConsumer(
         connection,
-        new FailProcessingRequestUseCase(repository, publisher),
+        new FailProcessingRequestUseCase(repository, unitOfWork),
       );
 
     it('moves the request to FAILED and publishes one terminal event', async () => {
       const request = await received();
-      const before = publisher.publishedTerminalEvents.length;
+      const before = outbox.recordedTerminalEvents.length;
 
       await consumer().handleMessage(
         JSON.stringify({
@@ -67,7 +72,7 @@ describe('lifecycle consumers', () => {
           )
         )?.status,
       ).toBe(ProcessingRequestStatus.FAILED);
-      expect(publisher.publishedTerminalEvents).toHaveLength(before + 1);
+      expect(outbox.recordedTerminalEvents).toHaveLength(before + 1);
     });
 
     it('unwraps a Nest data envelope', async () => {
@@ -123,7 +128,7 @@ describe('lifecycle consumers', () => {
     const consumer = () =>
       new ProcessingStartedConsumer(
         connection,
-        new StartProcessingRequestUseCase(repository),
+        new StartProcessingRequestUseCase(repository, unitOfWork),
       );
 
     it('moves a queued request to PROCESSING', async () => {
@@ -179,7 +184,7 @@ describe('lifecycle consumers', () => {
     const consumer = () =>
       new ProcessingFailedConsumer(
         connection,
-        new FailProcessingRequestUseCase(repository, publisher),
+        new FailProcessingRequestUseCase(repository, unitOfWork),
       );
 
     it('moves a processing request to FAILED with the reported code', async () => {
@@ -203,14 +208,12 @@ describe('lifecycle consumers', () => {
       expect(stored?.failureCode).toBe('PROCESSAMENTO_FALHOU');
     });
 
-    it('does not mark the event processed when publication fails', async () => {
+    it('does not mark the event processed when the outbox write fails', async () => {
       const request = await queued();
       await repository.update(startProcessingRequest(request));
-      jest
-        .spyOn(publisher, 'publishTerminalEvent')
-        .mockImplementationOnce(() => {
-          throw new Error('broker down');
-        });
+      jest.spyOn(outbox, 'add').mockImplementationOnce(() => {
+        throw new Error('outbox write failed');
+      });
 
       await expect(
         consumer().handleMessage(
@@ -222,7 +225,7 @@ describe('lifecycle consumers', () => {
             occurredAt: new Date().toISOString(),
           }),
         ),
-      ).rejects.toThrow('broker down');
+      ).rejects.toThrow('outbox write failed');
 
       expect(await repository.hasEventBeenProcessed('failed-1')).toBe(false);
     });

@@ -26,6 +26,29 @@ export class InMemoryOutboxWriter implements OutboxWriter {
   clear(): void {
     this.entries.length = 0;
   }
+
+  /**
+   * Accessors named for what actually happened: these rows are *recorded*,
+   * pending publication by the relay. Calling them "published" would claim a
+   * broker round-trip that has not occurred.
+   */
+  private payloadsFor<T>(pattern: string): T[] {
+    return this.entries
+      .filter((e) => e.pattern === pattern)
+      .map((e) => e.payload as T);
+  }
+
+  get recordedValidationRequests(): Record<string, unknown>[] {
+    return this.payloadsFor('VideoValidationRequested');
+  }
+
+  get recordedProcessingQueued(): Record<string, unknown>[] {
+    return this.payloadsFor('ProcessingQueued');
+  }
+
+  get recordedTerminalEvents(): Record<string, unknown>[] {
+    return this.payloadsFor('terminal.event');
+  }
 }
 
 /**

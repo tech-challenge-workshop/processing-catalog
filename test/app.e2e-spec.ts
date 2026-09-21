@@ -1,9 +1,9 @@
+import { InMemoryOutboxWriter } from '../src/infrastructure/in-memory-unit-of-work';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module';
-import { InMemoryEventPublisher } from './../src/infrastructure/in-memory-event-publisher';
 import { InMemoryProcessingRequestRepository } from './../src/infrastructure/in-memory-processing-request.repository';
 
 interface CreateProcessingRequestResponse {
@@ -16,7 +16,7 @@ interface CreateProcessingRequestResponse {
 
 describe('AppController (e2e)', () => {
   let app: INestApplication<App>;
-  let publisher: InMemoryEventPublisher;
+  let outbox: InMemoryOutboxWriter;
   let repository: InMemoryProcessingRequestRepository;
 
   beforeEach(async () => {
@@ -26,9 +26,8 @@ describe('AppController (e2e)', () => {
 
     app = moduleFixture.createNestApplication();
     await app.init();
-
-    publisher = app.get(InMemoryEventPublisher);
     repository = app.get(InMemoryProcessingRequestRepository);
+    outbox = app.get(InMemoryOutboxWriter);
   });
 
   it('/ (GET)', () => {
@@ -55,15 +54,19 @@ describe('AppController (e2e)', () => {
       expect(body.ownerUserId).toBe('user-123');
       expect(body.sourceStorageKey).toBe('videos/input.mp4');
 
-      expect(publisher.lastPublished).toBeDefined();
-      expect(publisher.lastPublished!.processingRequestId).toBe(
-        body.processingRequestId,
+      expect(outbox.recordedValidationRequests.at(-1)).toBeDefined();
+      expect(
+        outbox.recordedValidationRequests.at(-1)!.processingRequestId,
+      ).toBe(body.processingRequestId);
+      expect(outbox.recordedValidationRequests.at(-1)!.ownerUserId).toBe(
+        'user-123',
       );
-      expect(publisher.lastPublished!.ownerUserId).toBe('user-123');
-      expect(publisher.lastPublished!.sourceStorageKey).toBe(
+      expect(outbox.recordedValidationRequests.at(-1)!.sourceStorageKey).toBe(
         'videos/input.mp4',
       );
-      expect(publisher.lastPublished!.occurredAt).toBe(body.createdAt);
+      expect(outbox.recordedValidationRequests.at(-1)!.occurredAt).toBe(
+        body.createdAt,
+      );
     });
 
     it('rejects creation with missing fields', async () => {
@@ -72,7 +75,7 @@ describe('AppController (e2e)', () => {
         .send({ ownerUserId: 'user-123' });
 
       expect(response.status).toBe(400);
-      expect(publisher.published).toHaveLength(0);
+      expect(outbox.recordedValidationRequests).toHaveLength(0);
       await expect(repository.findByEventId('any')).resolves.toBeUndefined();
     });
 

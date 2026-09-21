@@ -5,8 +5,9 @@ import {
   ProcessingRequestDomainError,
   acceptProcessingRequest,
 } from '../domain/processing-request';
+import { EVENT_ROUTES } from './event-routes';
+import { UNIT_OF_WORK, type UnitOfWork } from './unit-of-work';
 import type { ProcessingRequestRepository } from '../domain/processing-request.repository';
-import type { EventPublisher } from './event-publisher';
 
 export interface AcceptProcessingRequestInput {
   eventId: string;
@@ -18,8 +19,8 @@ export class AcceptProcessingRequestUseCase {
   constructor(
     @Inject('ProcessingRequestRepository')
     private readonly repository: ProcessingRequestRepository,
-    @Inject('EventPublisher')
-    private readonly publisher: EventPublisher,
+    @Inject(UNIT_OF_WORK)
+    private readonly unitOfWork: UnitOfWork,
   ) {}
 
   async execute(
@@ -53,21 +54,25 @@ export class AcceptProcessingRequestUseCase {
 
     const updated = acceptProcessingRequest(request);
 
-    await this.repository.update(updated);
-
-    await this.publisher.publishProcessingQueued({
-      eventId: randomUUID(),
-      processingRequestId: updated.processingRequestId,
-      ownerUserId: updated.ownerUserId,
-      sourceStorageKey: updated.sourceStorageKey,
-      attemptId: updated.attemptId as string,
-      occurredAt: input.occurredAt,
+    await this.unitOfWork.runInTransaction(async (ctx) => {
+      await ctx.requests.update(updated);
+      await ctx.outbox.add(
+        EVENT_ROUTES.ProcessingQueued.queue,
+        EVENT_ROUTES.ProcessingQueued.pattern,
+        {
+          eventId: randomUUID(),
+          processingRequestId: updated.processingRequestId,
+          ownerUserId: updated.ownerUserId,
+          sourceStorageKey: updated.sourceStorageKey,
+          attemptId: updated.attemptId,
+          occurredAt: input.occurredAt,
+        },
+      );
+      await ctx.requests.markEventProcessed(
+        input.eventId,
+        updated.processingRequestId,
+      );
     });
-
-    await this.repository.markEventProcessed(
-      input.eventId,
-      updated.processingRequestId,
-    );
 
     return updated;
   }

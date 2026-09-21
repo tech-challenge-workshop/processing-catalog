@@ -9,6 +9,11 @@ import { StartProcessingRequestUseCase } from './application/start-processing-re
 import { FailProcessingRequestUseCase } from './application/fail-processing-request.use-case';
 import { InMemoryProcessingRequestRepository } from './infrastructure/in-memory-processing-request.repository';
 import { DatabaseHealthIndicator } from './infrastructure/persistence/database.health-indicator';
+import { UNIT_OF_WORK } from './application/unit-of-work';
+import {
+  InMemoryOutboxWriter,
+  InMemoryUnitOfWork,
+} from './infrastructure/in-memory-unit-of-work';
 import { InMemoryEventPublisher } from './infrastructure/in-memory-event-publisher';
 import { RabbitMQModule } from './infrastructure/rabbitmq/rabbitmq.module';
 import { RabbitMQEventPublisher } from './infrastructure/rabbitmq/rabbitmq.event-publisher';
@@ -40,6 +45,18 @@ const isLocalIntegration = () => process.env.LOCAL_INTEGRATION === 'true';
     FailProcessingRequestUseCase,
     InMemoryProcessingRequestRepository,
     DatabaseHealthIndicator,
+    InMemoryOutboxWriter,
+    {
+      // The in-memory unit of work until the data source is wired in; it
+      // cannot roll back, which is why atomicity is asserted only against
+      // PostgreSQL in the integration suite.
+      provide: UNIT_OF_WORK,
+      useFactory: (
+        repository: InMemoryProcessingRequestRepository,
+        outbox: InMemoryOutboxWriter,
+      ) => new InMemoryUnitOfWork(repository, outbox),
+      inject: [InMemoryProcessingRequestRepository, InMemoryOutboxWriter],
+    },
     {
       provide: 'ProcessingRequestRepository',
       useExisting: InMemoryProcessingRequestRepository,

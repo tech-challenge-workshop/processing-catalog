@@ -1,29 +1,34 @@
+import {
+  InMemoryOutboxWriter,
+  InMemoryUnitOfWork,
+} from '../infrastructure/in-memory-unit-of-work';
 import { randomUUID } from 'crypto';
 import {
   ProcessingRequestStatus,
   startProcessingRequest,
 } from '../domain/processing-request';
 import { InMemoryProcessingRequestRepository } from '../infrastructure/in-memory-processing-request.repository';
-import { InMemoryEventPublisher } from '../infrastructure/in-memory-event-publisher';
 import { AcceptProcessingRequestUseCase } from './accept-processing-request.use-case';
 import { CompleteProcessingRequestUseCase } from './complete-processing-request.use-case';
 import { CreateProcessingRequestUseCase } from './create-processing-request.use-case';
 
 describe('CompleteProcessingRequestUseCase', () => {
   let repository: InMemoryProcessingRequestRepository;
-  let publisher: InMemoryEventPublisher;
+  let outbox: InMemoryOutboxWriter;
+  let unitOfWork: InMemoryUnitOfWork;
   let useCase: CompleteProcessingRequestUseCase;
 
   beforeEach(() => {
     repository = new InMemoryProcessingRequestRepository();
-    publisher = new InMemoryEventPublisher();
-    useCase = new CompleteProcessingRequestUseCase(repository, publisher);
+    outbox = new InMemoryOutboxWriter();
+    unitOfWork = new InMemoryUnitOfWork(repository, outbox);
+    useCase = new CompleteProcessingRequestUseCase(repository, unitOfWork);
   });
 
   const createQueuedRequest = async () => {
     const createUseCase = new CreateProcessingRequestUseCase(
       repository,
-      publisher,
+      unitOfWork,
     );
     const request = await createUseCase.execute({
       eventId: randomUUID(),
@@ -32,7 +37,7 @@ describe('CompleteProcessingRequestUseCase', () => {
     });
     const acceptUseCase = new AcceptProcessingRequestUseCase(
       repository,
-      publisher,
+      unitOfWork,
     );
     const queued = await acceptUseCase.execute({
       eventId: 'accept-event-1',
@@ -67,8 +72,8 @@ describe('CompleteProcessingRequestUseCase', () => {
     );
     expect(found?.status).toBe(ProcessingRequestStatus.COMPLETED);
 
-    expect(publisher.publishedTerminalEvents).toHaveLength(1);
-    const published = publisher.lastPublishedTerminalEvent;
+    expect(outbox.recordedTerminalEvents).toHaveLength(1);
+    const published = outbox.recordedTerminalEvents.at(-1);
     expect(published?.processingRequestId).toBe(request.processingRequestId);
     expect(published?.ownerUserId).toBe('user-123');
     expect(published?.status).toBe(ProcessingRequestStatus.COMPLETED);
@@ -94,7 +99,7 @@ describe('CompleteProcessingRequestUseCase', () => {
       occurredAt: new Date().toISOString(),
     });
 
-    expect(publisher.publishedTerminalEvents).toHaveLength(1);
+    expect(outbox.recordedTerminalEvents).toHaveLength(1);
 
     const found = await repository.findByProcessingRequestId(
       request.processingRequestId,
@@ -112,7 +117,7 @@ describe('CompleteProcessingRequestUseCase', () => {
       }),
     ).rejects.toThrow('processingRequestId is required');
 
-    expect(publisher.publishedTerminalEvents).toHaveLength(0);
+    expect(outbox.recordedTerminalEvents).toHaveLength(0);
   });
 
   it('rejects an event without zipStorageKey', async () => {
@@ -127,7 +132,7 @@ describe('CompleteProcessingRequestUseCase', () => {
       }),
     ).rejects.toThrow('zipStorageKey is required');
 
-    expect(publisher.publishedTerminalEvents).toHaveLength(0);
+    expect(outbox.recordedTerminalEvents).toHaveLength(0);
   });
 
   it('rejects an unsupported transition without publishing or changing state', async () => {
@@ -148,7 +153,7 @@ describe('CompleteProcessingRequestUseCase', () => {
       }),
     ).rejects.toThrow('Cannot complete request in COMPLETED status');
 
-    expect(publisher.publishedTerminalEvents).toHaveLength(1);
+    expect(outbox.recordedTerminalEvents).toHaveLength(1);
 
     const found = await repository.findByProcessingRequestId(
       request.processingRequestId,
@@ -157,11 +162,9 @@ describe('CompleteProcessingRequestUseCase', () => {
     expect(found?.zipStorageKey).toBe('zips/output.zip');
   });
 
-  it('propagates publication failure without marking the event processed', async () => {
+  it('propagates an outbox write failure without marking the event processed', async () => {
     const request = await createQueuedRequest();
-    publisher.publishTerminalEvent = () => {
-      throw new Error('broker down');
-    };
+    outbox.add = () => Promise.reject(new Error('outbox write failed'));
 
     await expect(
       useCase.execute({
@@ -170,7 +173,7 @@ describe('CompleteProcessingRequestUseCase', () => {
         zipStorageKey: 'zips/output.zip',
         occurredAt: new Date().toISOString(),
       }),
-    ).rejects.toThrow('broker down');
+    ).rejects.toThrow('outbox write failed');
 
     expect(await repository.hasEventBeenProcessed('completed-event-7')).toBe(
       false,
