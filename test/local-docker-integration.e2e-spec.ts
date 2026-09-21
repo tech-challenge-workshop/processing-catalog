@@ -6,10 +6,7 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { RabbitMQConnection } from '../src/infrastructure/rabbitmq/rabbitmq.connection';
 import { InMemoryProcessingRequestRepository } from '../src/infrastructure/in-memory-processing-request.repository';
-import {
-  ProcessingRequestStatus,
-  startProcessingRequest,
-} from '../src/domain/processing-request';
+import { ProcessingRequestStatus } from '../src/domain/processing-request';
 
 interface CreateProcessingRequestResponse {
   processingRequestId: string;
@@ -198,10 +195,20 @@ describe('Local Docker Integration (e2e)', () => {
     };
     expect(queuedEvent.attemptId).toBe(queued?.attemptId);
 
-    // Completion now requires PROCESSING. The processing.started consumer
-    // arrives in T11; until then the transition is applied directly so this
-    // suite keeps exercising the completion path. T14 drives the real event.
-    repository.update(startProcessingRequest(queued!));
+    fakeConnection.deliver('processing.started', {
+      eventId: 'processing-started-1',
+      processingRequestId: body.processingRequestId,
+      attemptId: queued!.attemptId,
+      occurredAt: new Date().toISOString(),
+    });
+    await waitForMessage();
+
+    const processing = repository.findByProcessingRequestId(
+      body.processingRequestId,
+    );
+    expect(processing?.status).toBe(ProcessingRequestStatus.PROCESSING);
+    // Entering PROCESSING is not terminal and publishes nothing.
+    expect(fakeConnection.published).toHaveLength(2);
 
     fakeConnection.deliver('processing.completed', {
       eventId: 'processing-completed-1',
@@ -222,10 +229,12 @@ describe('Local Docker Integration (e2e)', () => {
 
     const terminalEvent = fakeConnection.published[2].content as {
       status: string;
-      zipStorageKey: string;
+      zipStorageKey?: string;
+      failureReason?: string;
     };
     expect(terminalEvent.status).toBe('COMPLETED');
     expect(terminalEvent.zipStorageKey).toBe('zips/output.zip');
+    expect(terminalEvent.failureReason).toBeUndefined();
   });
 
   it('does not transition or publish on duplicate events', async () => {
@@ -314,5 +323,170 @@ describe('Local Docker Integration (e2e)', () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ status: 'ok', rabbitmq: 'up' });
+  });
+
+  const createRequest = async (ownerUserId: string, key: string) => {
+    const response = await request(app.getHttpServer() as import('http').Server)
+      .post('/processing-requests')
+      .send({ ownerUserId, sourceStorageKey: key });
+    return response.body as CreateProcessingRequestResponse;
+  };
+
+  it('reaches FAILED through VideoRejected and publishes one terminal event', async () => {
+    const body = await createRequest('user-rejeitado', 'videos/bad.txt');
+    fakeConnection.published = [];
+
+    fakeConnection.deliver('video.rejected', {
+      eventId: 'video-rejected-1',
+      processingRequestId: body.processingRequestId,
+      failureCode: 'FORMATO_INVALIDO',
+      occurredAt: new Date().toISOString(),
+    });
+    await waitForMessage();
+
+    const failed = repository.findByProcessingRequestId(
+      body.processingRequestId,
+    );
+    expect(failed?.status).toBe(ProcessingRequestStatus.FAILED);
+    expect(failed?.failureCode).toBe('FORMATO_INVALIDO');
+
+    expect(fakeConnection.published).toHaveLength(1);
+    expect(fakeConnection.published[0].queue).toBe('notification.terminal');
+    expect(fakeConnection.published[0].pattern).toBe('terminal.event');
+
+    const terminal = fakeConnection.published[0].content as {
+      status: string;
+      failureReason?: string;
+      zipStorageKey?: string;
+      attemptId?: string;
+    };
+    expect(terminal.status).toBe('FAILED');
+    expect(terminal.failureReason).toBeTruthy();
+    expect(terminal.zipStorageKey).toBeUndefined();
+    // Rejected before validation accepted it, so no attempt ever started.
+    expect(terminal.attemptId).toBeUndefined();
+    expect(terminal.failureReason).not.toContain('FORMATO_INVALIDO');
+  });
+
+  it('reaches FAILED through ProcessingFailed after starting', async () => {
+    const body = await createRequest('user-falhou', 'videos/input.mp4');
+
+    fakeConnection.deliver('video.accepted', {
+      eventId: 'accepted-for-failure',
+      processingRequestId: body.processingRequestId,
+      occurredAt: new Date().toISOString(),
+    });
+    await waitForMessage();
+
+    const queued = repository.findByProcessingRequestId(
+      body.processingRequestId,
+    );
+
+    fakeConnection.deliver('processing.started', {
+      eventId: 'started-for-failure',
+      processingRequestId: body.processingRequestId,
+      attemptId: queued!.attemptId,
+      occurredAt: new Date().toISOString(),
+    });
+    await waitForMessage();
+    expect(
+      repository.findByProcessingRequestId(body.processingRequestId)?.status,
+    ).toBe(ProcessingRequestStatus.PROCESSING);
+
+    fakeConnection.published = [];
+    fakeConnection.deliver('processing.failed', {
+      eventId: 'failed-for-failure',
+      processingRequestId: body.processingRequestId,
+      attemptId: queued!.attemptId,
+      failureCode: 'PROCESSAMENTO_FALHOU',
+      occurredAt: new Date().toISOString(),
+    });
+    await waitForMessage();
+
+    const failed = repository.findByProcessingRequestId(
+      body.processingRequestId,
+    );
+    expect(failed?.status).toBe(ProcessingRequestStatus.FAILED);
+    expect(failed?.failureCode).toBe('PROCESSAMENTO_FALHOU');
+
+    expect(fakeConnection.published).toHaveLength(1);
+    const terminal = fakeConnection.published[0].content as {
+      status: string;
+      failureReason?: string;
+      attemptId?: string;
+    };
+    expect(terminal.status).toBe('FAILED');
+    // The attempt had started, so the terminal event names it.
+    expect(terminal.attemptId).toBe(queued!.attemptId);
+  });
+
+  it('replays every lifecycle event without changing state or publishing again', async () => {
+    const body = await createRequest('user-replay', 'videos/input.mp4');
+
+    const deliveries: [string, Record<string, unknown>][] = [
+      [
+        'video.accepted',
+        {
+          eventId: 'replay-accepted',
+          processingRequestId: body.processingRequestId,
+          occurredAt: new Date().toISOString(),
+        },
+      ],
+    ];
+    for (const [queue, payload] of deliveries) {
+      fakeConnection.deliver(queue, payload);
+      await waitForMessage();
+    }
+
+    const queued = repository.findByProcessingRequestId(
+      body.processingRequestId,
+    );
+    fakeConnection.deliver('processing.started', {
+      eventId: 'replay-started',
+      processingRequestId: body.processingRequestId,
+      attemptId: queued!.attemptId,
+      occurredAt: new Date().toISOString(),
+    });
+    await waitForMessage();
+    fakeConnection.deliver('processing.completed', {
+      eventId: 'replay-completed',
+      processingRequestId: body.processingRequestId,
+      zipStorageKey: 'zips/replay.zip',
+      occurredAt: new Date().toISOString(),
+    });
+    await waitForMessage();
+
+    const settled = repository.findByProcessingRequestId(
+      body.processingRequestId,
+    );
+    const publishedCount = fakeConnection.published.length;
+
+    // Replay everything, including the event that produced the terminal state.
+    fakeConnection.deliver('video.accepted', {
+      eventId: 'replay-accepted',
+      processingRequestId: body.processingRequestId,
+      occurredAt: new Date().toISOString(),
+    });
+    fakeConnection.deliver('processing.started', {
+      eventId: 'replay-started',
+      processingRequestId: body.processingRequestId,
+      attemptId: queued!.attemptId,
+      occurredAt: new Date().toISOString(),
+    });
+    fakeConnection.deliver('processing.completed', {
+      eventId: 'replay-completed',
+      processingRequestId: body.processingRequestId,
+      zipStorageKey: 'zips/replay.zip',
+      occurredAt: new Date().toISOString(),
+    });
+    await waitForMessage();
+
+    const afterReplay = repository.findByProcessingRequestId(
+      body.processingRequestId,
+    );
+    expect(afterReplay?.status).toBe(settled?.status);
+    expect(afterReplay?.zipStorageKey).toBe(settled?.zipStorageKey);
+    expect(afterReplay?.updatedAt).toEqual(settled?.updatedAt);
+    expect(fakeConnection.published).toHaveLength(publishedCount);
   });
 });
