@@ -8,6 +8,16 @@ import {
 export const RABBITMQ_EXCHANGE = 'fiapx.events';
 
 /**
+ * Where a message goes once it has failed more times than it is worth
+ * retrying. Without it, one poisonous message blocks its queue forever.
+ */
+export const RABBITMQ_DLX = 'fiapx.events.dlx';
+
+export function deadLetterQueueFor(queue: string): string {
+  return `${queue}.dlq`;
+}
+
+/**
  * Every queue the Catalog publishes to or consumes from.
  *
  * Asserted at channel setup, so a consumer never depends on a producer having
@@ -47,7 +57,10 @@ export class RabbitMQConnection implements OnModuleInit, OnModuleDestroy {
       ) => Promise<unknown>;
       assertQueue: (
         queue: string,
-        options?: { durable?: boolean },
+        options?: {
+          durable?: boolean;
+          arguments?: Record<string, unknown>;
+        },
       ) => Promise<{ queue: string }>;
       bindQueue: (
         queue: string,
@@ -58,7 +71,22 @@ export class RabbitMQConnection implements OnModuleInit, OnModuleDestroy {
       await channel.assertExchange(RABBITMQ_EXCHANGE, 'topic', {
         durable: true,
       });
+      await channel.assertExchange(RABBITMQ_DLX, 'topic', { durable: true });
+
       for (const routingKey of RABBITMQ_QUEUES) {
+        // The dead-letter queue is declared here, but dead-lettering itself
+        // is NOT set as a queue argument. Five of these queues are also
+        // declared by the Worker, and RabbitMQ rejects a second declaration
+        // whose arguments differ - which took the Worker's channel down with
+        // `PRECONDITION_FAILED - inequivalent arg 'x-dead-letter-exchange'`.
+        //
+        // The routing is applied as a broker policy by fiap-x-platform, which
+        // owns the topology. A policy binds no declarer, so no service can
+        // contradict another.
+        const dlq = deadLetterQueueFor(routingKey);
+        await channel.assertQueue(dlq, { durable: true });
+        await channel.bindQueue(dlq, RABBITMQ_DLX, routingKey);
+
         const queue = await channel.assertQueue(routingKey, {
           durable: true,
         });

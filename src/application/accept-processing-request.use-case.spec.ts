@@ -1,25 +1,30 @@
+import {
+  InMemoryOutboxWriter,
+  InMemoryUnitOfWork,
+} from '../infrastructure/in-memory-unit-of-work';
 import { randomUUID } from 'crypto';
 import { ProcessingRequestStatus } from '../domain/processing-request';
 import { InMemoryProcessingRequestRepository } from '../infrastructure/in-memory-processing-request.repository';
-import { InMemoryEventPublisher } from '../infrastructure/in-memory-event-publisher';
 import { AcceptProcessingRequestUseCase } from './accept-processing-request.use-case';
 import { CreateProcessingRequestUseCase } from './create-processing-request.use-case';
 
 describe('AcceptProcessingRequestUseCase', () => {
   let repository: InMemoryProcessingRequestRepository;
-  let publisher: InMemoryEventPublisher;
+  let outbox: InMemoryOutboxWriter;
+  let unitOfWork: InMemoryUnitOfWork;
   let useCase: AcceptProcessingRequestUseCase;
 
   beforeEach(() => {
     repository = new InMemoryProcessingRequestRepository();
-    publisher = new InMemoryEventPublisher();
-    useCase = new AcceptProcessingRequestUseCase(repository, publisher);
+    outbox = new InMemoryOutboxWriter();
+    unitOfWork = new InMemoryUnitOfWork(repository, outbox);
+    useCase = new AcceptProcessingRequestUseCase(repository, unitOfWork);
   });
 
   const createRequest = async () => {
     const createUseCase = new CreateProcessingRequestUseCase(
       repository,
-      publisher,
+      unitOfWork,
     );
     return createUseCase.execute({
       eventId: randomUUID(),
@@ -42,14 +47,14 @@ describe('AcceptProcessingRequestUseCase', () => {
     expect(updated.status).toBe(ProcessingRequestStatus.QUEUED);
     expect(updated.attemptId).toBeDefined();
 
-    const found = repository.findByProcessingRequestId(
+    const found = await repository.findByProcessingRequestId(
       request.processingRequestId,
     );
     expect(found?.status).toBe(ProcessingRequestStatus.QUEUED);
     expect(found?.attemptId).toBe(updated.attemptId);
 
-    expect(publisher.publishedProcessingQueued).toHaveLength(1);
-    const published = publisher.lastPublishedProcessingQueued;
+    expect(outbox.recordedProcessingQueued).toHaveLength(1);
+    const published = outbox.recordedProcessingQueued.at(-1);
     expect(published?.processingRequestId).toBe(request.processingRequestId);
     expect(published?.ownerUserId).toBe('user-123');
     expect(published?.sourceStorageKey).toBe('videos/input.mp4');
@@ -73,9 +78,9 @@ describe('AcceptProcessingRequestUseCase', () => {
       occurredAt: new Date().toISOString(),
     });
 
-    expect(publisher.publishedProcessingQueued).toHaveLength(1);
+    expect(outbox.recordedProcessingQueued).toHaveLength(1);
 
-    const found = repository.findByProcessingRequestId(
+    const found = await repository.findByProcessingRequestId(
       request.processingRequestId,
     );
     expect(found?.status).toBe(ProcessingRequestStatus.QUEUED);
@@ -90,7 +95,7 @@ describe('AcceptProcessingRequestUseCase', () => {
       }),
     ).rejects.toThrow('processingRequestId is required');
 
-    expect(publisher.publishedProcessingQueued).toHaveLength(0);
+    expect(outbox.recordedProcessingQueued).toHaveLength(0);
   });
 
   it('rejects an unsupported transition without publishing or changing state', async () => {
@@ -109,20 +114,20 @@ describe('AcceptProcessingRequestUseCase', () => {
       }),
     ).rejects.toThrow('Cannot accept request in QUEUED status');
 
-    expect(publisher.publishedProcessingQueued).toHaveLength(1);
+    expect(outbox.recordedProcessingQueued).toHaveLength(1);
 
-    const found = repository.findByProcessingRequestId(
+    const found = await repository.findByProcessingRequestId(
       request.processingRequestId,
     );
     expect(found?.status).toBe(ProcessingRequestStatus.QUEUED);
     expect(found?.attemptId).toBeDefined();
   });
 
-  it('propagates publication failure without marking the event processed', async () => {
+  it('propagates an outbox write failure without marking the event processed', async () => {
     const request = await createRequest();
-    publisher.publishProcessingQueued = () => {
-      throw new Error('broker down');
-    };
+    // The use case no longer publishes: a failure to record the event in the
+    // outbox is what must abort the transition now.
+    outbox.add = () => Promise.reject(new Error('outbox write failed'));
 
     await expect(
       useCase.execute({
@@ -130,8 +135,10 @@ describe('AcceptProcessingRequestUseCase', () => {
         processingRequestId: request.processingRequestId,
         occurredAt: new Date().toISOString(),
       }),
-    ).rejects.toThrow('broker down');
+    ).rejects.toThrow('outbox write failed');
 
-    expect(repository.hasEventBeenProcessed('accepted-event-6')).toBe(false);
+    expect(await repository.hasEventBeenProcessed('accepted-event-6')).toBe(
+      false,
+    );
   });
 });

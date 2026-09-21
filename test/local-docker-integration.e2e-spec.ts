@@ -6,7 +6,41 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { RabbitMQConnection } from '../src/infrastructure/rabbitmq/rabbitmq.connection';
 import { InMemoryProcessingRequestRepository } from '../src/infrastructure/in-memory-processing-request.repository';
+import { InMemoryOutboxWriter } from '../src/infrastructure/in-memory-unit-of-work';
 import { ProcessingRequestStatus } from '../src/domain/processing-request';
+
+// This suite exercises the in-memory composition. It pins DATABASE_HOST off
+// rather than inheriting it: with a database configured the composition root
+// selects TypeORM, and the in-memory doubles this suite reads would still
+// resolve from the container while the app used something else entirely -
+// asserting against a bystander. That is the same shape as the wiring gap
+// composition.e2e-spec.ts now guards.
+const databaseEnv = [
+  'DATABASE_HOST',
+  'DATABASE_PORT',
+  'DATABASE_NAME',
+  'DATABASE_SCHEMA',
+  'DATABASE_USER',
+  'DATABASE_PASSWORD',
+] as const;
+const savedDatabaseEnv: Record<string, string | undefined> = {};
+
+beforeAll(() => {
+  for (const key of databaseEnv) {
+    savedDatabaseEnv[key] = process.env[key];
+    delete process.env[key];
+  }
+});
+
+afterAll(() => {
+  for (const key of databaseEnv) {
+    if (savedDatabaseEnv[key] === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = savedDatabaseEnv[key];
+    }
+  }
+});
 
 interface CreateProcessingRequestResponse {
   processingRequestId: string;
@@ -128,6 +162,7 @@ describe('Local Docker Integration (e2e)', () => {
   let app: INestApplication;
   let fakeConnection: FakeRabbitMQConnection;
   let repository: InMemoryProcessingRequestRepository;
+  let outbox: InMemoryOutboxWriter;
 
   beforeAll(async () => {
     fakeConnection = new FakeRabbitMQConnection();
@@ -143,6 +178,9 @@ describe('Local Docker Integration (e2e)', () => {
     await app.init();
 
     repository = app.get(InMemoryProcessingRequestRepository);
+    // The Catalog no longer publishes: what it emits is a pending outbox row,
+    // and the relay is the only thing that reaches the broker.
+    outbox = app.get(InMemoryOutboxWriter);
   }, 30_000);
 
   afterAll(async () => {
@@ -168,11 +206,9 @@ describe('Local Docker Integration (e2e)', () => {
     expect(createResponse.status).toBe(201);
     expect(body.status).toBe('RECEIVED');
 
-    expect(fakeConnection.published).toHaveLength(1);
-    expect(fakeConnection.published[0].queue).toBe('video-validation');
-    expect(fakeConnection.published[0].pattern).toBe(
-      'VideoValidationRequested',
-    );
+    expect(outbox.entries).toHaveLength(1);
+    expect(outbox.entries[0].queue).toBe('video-validation');
+    expect(outbox.entries[0].pattern).toBe('VideoValidationRequested');
 
     fakeConnection.deliver('video.accepted', {
       eventId: 'video-accepted-1',
@@ -181,16 +217,16 @@ describe('Local Docker Integration (e2e)', () => {
     });
     await waitForMessage();
 
-    const queued = repository.findByProcessingRequestId(
+    const queued = await repository.findByProcessingRequestId(
       body.processingRequestId,
     );
     expect(queued?.status).toBe(ProcessingRequestStatus.QUEUED);
     expect(queued?.attemptId).toBeDefined();
-    expect(fakeConnection.published).toHaveLength(2);
-    expect(fakeConnection.published[1].queue).toBe('processing');
-    expect(fakeConnection.published[1].pattern).toBe('ProcessingQueued');
+    expect(outbox.entries).toHaveLength(2);
+    expect(outbox.entries[1].queue).toBe('processing');
+    expect(outbox.entries[1].pattern).toBe('ProcessingQueued');
 
-    const queuedEvent = fakeConnection.published[1].content as {
+    const queuedEvent = outbox.entries[1].payload as {
       attemptId: string;
     };
     expect(queuedEvent.attemptId).toBe(queued?.attemptId);
@@ -203,12 +239,12 @@ describe('Local Docker Integration (e2e)', () => {
     });
     await waitForMessage();
 
-    const processing = repository.findByProcessingRequestId(
+    const processing = await repository.findByProcessingRequestId(
       body.processingRequestId,
     );
     expect(processing?.status).toBe(ProcessingRequestStatus.PROCESSING);
     // Entering PROCESSING is not terminal and publishes nothing.
-    expect(fakeConnection.published).toHaveLength(2);
+    expect(outbox.entries).toHaveLength(2);
 
     fakeConnection.deliver('processing.completed', {
       eventId: 'processing-completed-1',
@@ -218,16 +254,16 @@ describe('Local Docker Integration (e2e)', () => {
     });
     await waitForMessage();
 
-    const completed = repository.findByProcessingRequestId(
+    const completed = await repository.findByProcessingRequestId(
       body.processingRequestId,
     );
     expect(completed?.status).toBe(ProcessingRequestStatus.COMPLETED);
     expect(completed?.zipStorageKey).toBe('zips/output.zip');
-    expect(fakeConnection.published).toHaveLength(3);
-    expect(fakeConnection.published[2].queue).toBe('notification.terminal');
-    expect(fakeConnection.published[2].pattern).toBe('terminal.event');
+    expect(outbox.entries).toHaveLength(3);
+    expect(outbox.entries[2].queue).toBe('notification.terminal');
+    expect(outbox.entries[2].pattern).toBe('terminal.event');
 
-    const terminalEvent = fakeConnection.published[2].content as {
+    const terminalEvent = outbox.entries[2].payload as {
       status: string;
       zipStorageKey?: string;
       failureReason?: string;
@@ -248,7 +284,7 @@ describe('Local Docker Integration (e2e)', () => {
       });
 
     const body = createResponse.body as CreateProcessingRequestResponse;
-    fakeConnection.published = [];
+    outbox.clear();
 
     fakeConnection.deliver('video.accepted', {
       eventId: 'duplicate-accept',
@@ -264,7 +300,7 @@ describe('Local Docker Integration (e2e)', () => {
     });
     await waitForMessage();
 
-    expect(fakeConnection.published).toHaveLength(1);
+    expect(outbox.entries).toHaveLength(1);
   });
 
   it('does not transition on invalid payload', async () => {
@@ -278,7 +314,7 @@ describe('Local Docker Integration (e2e)', () => {
       });
 
     const body = createResponse.body as CreateProcessingRequestResponse;
-    const previousLength = fakeConnection.published.length;
+    const previousLength = outbox.entries.length;
 
     fakeConnection.deliver('processing.completed', {
       eventId: 'invalid-complete',
@@ -288,11 +324,11 @@ describe('Local Docker Integration (e2e)', () => {
     });
     await waitForMessage();
 
-    const stored = repository.findByProcessingRequestId(
+    const stored = await repository.findByProcessingRequestId(
       body.processingRequestId,
     );
     expect(stored?.status).toBe(ProcessingRequestStatus.RECEIVED);
-    expect(fakeConnection.published).toHaveLength(previousLength);
+    expect(outbox.entries).toHaveLength(previousLength);
   });
 
   it('exposes the observation endpoint when LOCAL_INTEGRATION=true', async () => {
@@ -322,7 +358,11 @@ describe('Local Docker Integration (e2e)', () => {
     ).get('/health');
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ status: 'ok', rabbitmq: 'up' });
+    expect(response.body).toEqual({
+      status: 'ok',
+      rabbitmq: 'up',
+      database: 'up',
+    });
   });
 
   const createRequest = async (ownerUserId: string, key: string) => {
@@ -334,7 +374,7 @@ describe('Local Docker Integration (e2e)', () => {
 
   it('reaches FAILED through VideoRejected and publishes one terminal event', async () => {
     const body = await createRequest('user-rejeitado', 'videos/bad.txt');
-    fakeConnection.published = [];
+    outbox.clear();
 
     fakeConnection.deliver('video.rejected', {
       eventId: 'video-rejected-1',
@@ -344,17 +384,17 @@ describe('Local Docker Integration (e2e)', () => {
     });
     await waitForMessage();
 
-    const failed = repository.findByProcessingRequestId(
+    const failed = await repository.findByProcessingRequestId(
       body.processingRequestId,
     );
     expect(failed?.status).toBe(ProcessingRequestStatus.FAILED);
     expect(failed?.failureCode).toBe('FORMATO_INVALIDO');
 
-    expect(fakeConnection.published).toHaveLength(1);
-    expect(fakeConnection.published[0].queue).toBe('notification.terminal');
-    expect(fakeConnection.published[0].pattern).toBe('terminal.event');
+    expect(outbox.entries).toHaveLength(1);
+    expect(outbox.entries[0].queue).toBe('notification.terminal');
+    expect(outbox.entries[0].pattern).toBe('terminal.event');
 
-    const terminal = fakeConnection.published[0].content as {
+    const terminal = outbox.entries[0].payload as {
       status: string;
       failureReason?: string;
       zipStorageKey?: string;
@@ -378,7 +418,7 @@ describe('Local Docker Integration (e2e)', () => {
     });
     await waitForMessage();
 
-    const queued = repository.findByProcessingRequestId(
+    const queued = await repository.findByProcessingRequestId(
       body.processingRequestId,
     );
 
@@ -390,10 +430,11 @@ describe('Local Docker Integration (e2e)', () => {
     });
     await waitForMessage();
     expect(
-      repository.findByProcessingRequestId(body.processingRequestId)?.status,
+      (await repository.findByProcessingRequestId(body.processingRequestId))
+        ?.status,
     ).toBe(ProcessingRequestStatus.PROCESSING);
 
-    fakeConnection.published = [];
+    outbox.clear();
     fakeConnection.deliver('processing.failed', {
       eventId: 'failed-for-failure',
       processingRequestId: body.processingRequestId,
@@ -403,14 +444,14 @@ describe('Local Docker Integration (e2e)', () => {
     });
     await waitForMessage();
 
-    const failed = repository.findByProcessingRequestId(
+    const failed = await repository.findByProcessingRequestId(
       body.processingRequestId,
     );
     expect(failed?.status).toBe(ProcessingRequestStatus.FAILED);
     expect(failed?.failureCode).toBe('PROCESSAMENTO_FALHOU');
 
-    expect(fakeConnection.published).toHaveLength(1);
-    const terminal = fakeConnection.published[0].content as {
+    expect(outbox.entries).toHaveLength(1);
+    const terminal = outbox.entries[0].payload as {
       status: string;
       failureReason?: string;
       attemptId?: string;
@@ -438,7 +479,7 @@ describe('Local Docker Integration (e2e)', () => {
       await waitForMessage();
     }
 
-    const queued = repository.findByProcessingRequestId(
+    const queued = await repository.findByProcessingRequestId(
       body.processingRequestId,
     );
     fakeConnection.deliver('processing.started', {
@@ -456,10 +497,10 @@ describe('Local Docker Integration (e2e)', () => {
     });
     await waitForMessage();
 
-    const settled = repository.findByProcessingRequestId(
+    const settled = await repository.findByProcessingRequestId(
       body.processingRequestId,
     );
-    const publishedCount = fakeConnection.published.length;
+    const publishedCount = outbox.entries.length;
 
     // Replay everything, including the event that produced the terminal state.
     fakeConnection.deliver('video.accepted', {
@@ -481,12 +522,12 @@ describe('Local Docker Integration (e2e)', () => {
     });
     await waitForMessage();
 
-    const afterReplay = repository.findByProcessingRequestId(
+    const afterReplay = await repository.findByProcessingRequestId(
       body.processingRequestId,
     );
     expect(afterReplay?.status).toBe(settled?.status);
     expect(afterReplay?.zipStorageKey).toBe(settled?.zipStorageKey);
     expect(afterReplay?.updatedAt).toEqual(settled?.updatedAt);
-    expect(fakeConnection.published).toHaveLength(publishedCount);
+    expect(outbox.entries).toHaveLength(publishedCount);
   });
 });

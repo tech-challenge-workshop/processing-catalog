@@ -1,3 +1,7 @@
+import {
+  InMemoryOutboxWriter,
+  InMemoryUnitOfWork,
+} from '../in-memory-unit-of-work';
 import { AcceptProcessingRequestUseCase } from '../../application/accept-processing-request.use-case';
 import { CompleteProcessingRequestUseCase } from '../../application/complete-processing-request.use-case';
 import { CreateProcessingRequestUseCase } from '../../application/create-processing-request.use-case';
@@ -5,27 +9,28 @@ import {
   ProcessingRequestDomainError,
   startProcessingRequest,
 } from '../../domain/processing-request';
-import { InMemoryEventPublisher } from '../in-memory-event-publisher';
 import { InMemoryProcessingRequestRepository } from '../in-memory-processing-request.repository';
 import { ProcessingCompletedConsumer } from './processing-completed.consumer';
 
 describe('ProcessingCompletedConsumer', () => {
   let repository: InMemoryProcessingRequestRepository;
-  let publisher: InMemoryEventPublisher;
+  let outbox: InMemoryOutboxWriter;
+  let unitOfWork: InMemoryUnitOfWork;
   let useCase: CompleteProcessingRequestUseCase;
   let consumer: ProcessingCompletedConsumer;
 
   beforeEach(() => {
     repository = new InMemoryProcessingRequestRepository();
-    publisher = new InMemoryEventPublisher();
-    useCase = new CompleteProcessingRequestUseCase(repository, publisher);
+    outbox = new InMemoryOutboxWriter();
+    unitOfWork = new InMemoryUnitOfWork(repository, outbox);
+    useCase = new CompleteProcessingRequestUseCase(repository, unitOfWork);
     consumer = new ProcessingCompletedConsumer({} as never, useCase);
   });
 
   const createQueuedRequest = async () => {
     const createUseCase = new CreateProcessingRequestUseCase(
       repository,
-      publisher,
+      unitOfWork,
     );
     const request = await createUseCase.execute({
       eventId: 'create-event-1',
@@ -34,7 +39,7 @@ describe('ProcessingCompletedConsumer', () => {
     });
     const acceptUseCase = new AcceptProcessingRequestUseCase(
       repository,
-      publisher,
+      unitOfWork,
     );
     const queued = await acceptUseCase.execute({
       eventId: 'accept-event-1',
@@ -45,7 +50,7 @@ describe('ProcessingCompletedConsumer', () => {
     // Completion now requires PROCESSING. The start consumer arrives in T11;
     // until then the transition is applied through the domain directly.
     const processing = startProcessingRequest(queued);
-    repository.update(processing);
+    await repository.update(processing);
     return processing;
   };
 
@@ -60,11 +65,11 @@ describe('ProcessingCompletedConsumer', () => {
 
     await consumer.handleMessage(content);
 
-    const found = repository.findByProcessingRequestId(
+    const found = await repository.findByProcessingRequestId(
       request.processingRequestId,
     );
     expect(found?.status).toBe('COMPLETED');
-    expect(publisher.publishedTerminalEvents).toHaveLength(1);
+    expect(outbox.recordedTerminalEvents).toHaveLength(1);
   });
 
   it('is idempotent for the same eventId', async () => {
@@ -79,7 +84,7 @@ describe('ProcessingCompletedConsumer', () => {
     await consumer.handleMessage(content);
     await consumer.handleMessage(content);
 
-    expect(publisher.publishedTerminalEvents).toHaveLength(1);
+    expect(outbox.recordedTerminalEvents).toHaveLength(1);
   });
 
   it('rejects an invalid payload', async () => {
@@ -89,7 +94,7 @@ describe('ProcessingCompletedConsumer', () => {
       ProcessingRequestDomainError,
     );
 
-    expect(publisher.publishedTerminalEvents).toHaveLength(0);
+    expect(outbox.recordedTerminalEvents).toHaveLength(0);
   });
 
   it('rejects an unsupported transition', async () => {
@@ -114,14 +119,12 @@ describe('ProcessingCompletedConsumer', () => {
       ),
     ).rejects.toBeInstanceOf(ProcessingRequestDomainError);
 
-    expect(publisher.publishedTerminalEvents).toHaveLength(1);
+    expect(outbox.recordedTerminalEvents).toHaveLength(1);
   });
 
   it('propagates publication failures', async () => {
     const request = await createQueuedRequest();
-    publisher.publishTerminalEvent = () => {
-      throw new Error('broker down');
-    };
+    outbox.add = () => Promise.reject(new Error('outbox write failed'));
 
     await expect(
       consumer.handleMessage(
@@ -132,6 +135,6 @@ describe('ProcessingCompletedConsumer', () => {
           occurredAt: new Date().toISOString(),
         }),
       ),
-    ).rejects.toThrow('broker down');
+    ).rejects.toThrow('outbox write failed');
   });
 });

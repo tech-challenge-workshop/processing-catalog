@@ -5,8 +5,9 @@ import {
   ProcessingRequestDomainError,
   completeProcessingRequest,
 } from '../domain/processing-request';
+import { EVENT_ROUTES } from './event-routes';
+import { UNIT_OF_WORK, type UnitOfWork } from './unit-of-work';
 import type { ProcessingRequestRepository } from '../domain/processing-request.repository';
-import type { EventPublisher } from './event-publisher';
 
 export interface CompleteProcessingRequestInput {
   eventId: string;
@@ -19,8 +20,8 @@ export class CompleteProcessingRequestUseCase {
   constructor(
     @Inject('ProcessingRequestRepository')
     private readonly repository: ProcessingRequestRepository,
-    @Inject('EventPublisher')
-    private readonly publisher: EventPublisher,
+    @Inject(UNIT_OF_WORK)
+    private readonly unitOfWork: UnitOfWork,
   ) {}
 
   async execute(
@@ -39,14 +40,14 @@ export class CompleteProcessingRequestUseCase {
       throw new ProcessingRequestDomainError('zipStorageKey is required');
     }
 
-    if (this.repository.hasEventBeenProcessed(input.eventId)) {
-      const existing = this.repository.findByEventId(input.eventId);
+    if (await this.repository.hasEventBeenProcessed(input.eventId)) {
+      const existing = await this.repository.findByEventId(input.eventId);
       if (existing) {
         return existing;
       }
     }
 
-    const request = this.repository.findByProcessingRequestId(
+    const request = await this.repository.findByProcessingRequestId(
       input.processingRequestId,
     );
     if (!request) {
@@ -57,21 +58,26 @@ export class CompleteProcessingRequestUseCase {
 
     const updated = completeProcessingRequest(request, input.zipStorageKey);
 
-    this.repository.update(updated);
-
-    await this.publisher.publishTerminalEvent({
-      eventId: randomUUID(),
-      processingRequestId: updated.processingRequestId,
-      ownerUserId: updated.ownerUserId,
-      status: updated.status,
-      zipStorageKey: updated.zipStorageKey,
-      occurredAt: input.occurredAt,
+    await this.unitOfWork.runInTransaction(async (ctx) => {
+      await ctx.requests.update(updated);
+      await ctx.outbox.add(
+        EVENT_ROUTES.TerminalEvent.queue,
+        EVENT_ROUTES.TerminalEvent.pattern,
+        {
+          eventId: randomUUID(),
+          processingRequestId: updated.processingRequestId,
+          ownerUserId: updated.ownerUserId,
+          status: updated.status,
+          zipStorageKey: updated.zipStorageKey,
+          attemptId: updated.attemptId,
+          occurredAt: input.occurredAt,
+        },
+      );
+      await ctx.requests.markEventProcessed(
+        input.eventId,
+        updated.processingRequestId,
+      );
     });
-
-    this.repository.markEventProcessed(
-      input.eventId,
-      updated.processingRequestId,
-    );
 
     return updated;
   }

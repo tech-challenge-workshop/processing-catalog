@@ -1,17 +1,22 @@
+import {
+  InMemoryOutboxWriter,
+  InMemoryUnitOfWork,
+} from '../infrastructure/in-memory-unit-of-work';
 import { InMemoryProcessingRequestRepository } from '../infrastructure/in-memory-processing-request.repository';
-import { InMemoryEventPublisher } from '../infrastructure/in-memory-event-publisher';
 import { CreateProcessingRequestUseCase } from './create-processing-request.use-case';
 import { ProcessingRequestStatus } from '../domain/processing-request';
 
 describe('CreateProcessingRequestUseCase', () => {
   let repository: InMemoryProcessingRequestRepository;
-  let publisher: InMemoryEventPublisher;
+  let outbox: InMemoryOutboxWriter;
+  let unitOfWork: InMemoryUnitOfWork;
   let useCase: CreateProcessingRequestUseCase;
 
   beforeEach(() => {
     repository = new InMemoryProcessingRequestRepository();
-    publisher = new InMemoryEventPublisher();
-    useCase = new CreateProcessingRequestUseCase(repository, publisher);
+    outbox = new InMemoryOutboxWriter();
+    unitOfWork = new InMemoryUnitOfWork(repository, outbox);
+    useCase = new CreateProcessingRequestUseCase(repository, unitOfWork);
   });
 
   it('creates a request in RECEIVED state and publishes VideoValidationRequested', async () => {
@@ -25,7 +30,7 @@ describe('CreateProcessingRequestUseCase', () => {
     expect(request.ownerUserId).toBe('user-123');
     expect(request.sourceStorageKey).toBe('videos/input.mp4');
 
-    const published = publisher.lastPublished;
+    const published = outbox.recordedValidationRequests.at(-1);
     expect(published).toBeDefined();
     expect(published!.eventId).toBe('event-123');
     expect(published!.processingRequestId).toBe(request.processingRequestId);
@@ -47,7 +52,7 @@ describe('CreateProcessingRequestUseCase', () => {
     expect(firstRequest.processingRequestId).toBe(
       secondRequest.processingRequestId,
     );
-    expect(publisher.published).toHaveLength(1);
+    expect(outbox.recordedValidationRequests).toHaveLength(1);
   });
 
   it('rejects missing ownerUserId without persisting or publishing', async () => {
@@ -59,8 +64,10 @@ describe('CreateProcessingRequestUseCase', () => {
       }),
     ).rejects.toThrow('ownerUserId is required');
 
-    expect(publisher.published).toHaveLength(0);
-    expect(repository.findByEventId('event-789')).toBeUndefined();
+    expect(outbox.recordedValidationRequests).toHaveLength(0);
+    await expect(
+      repository.findByEventId('event-789'),
+    ).resolves.toBeUndefined();
   });
 
   it('rejects missing sourceStorageKey without persisting or publishing', async () => {
@@ -72,7 +79,9 @@ describe('CreateProcessingRequestUseCase', () => {
       }),
     ).rejects.toThrow('sourceStorageKey is required');
 
-    expect(publisher.published).toHaveLength(0);
-    expect(repository.findByEventId('event-abc')).toBeUndefined();
+    expect(outbox.recordedValidationRequests).toHaveLength(0);
+    await expect(
+      repository.findByEventId('event-abc'),
+    ).resolves.toBeUndefined();
   });
 });

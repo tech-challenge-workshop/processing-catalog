@@ -9,7 +9,7 @@ Implement these tasks with the `tlc-spec-driven` skill: **activate it by name an
 ---
 
 **Design**: `.specs/features/full-lifecycle/design.md`
-**Status**: Draft
+**Status**: Done
 
 ---
 
@@ -84,10 +84,10 @@ T14
 
 **Done when**:
 
-- [ ] `FailureCode` is a closed union of `FORMATO_INVALIDO`, `DURACAO_EXCEDIDA` and `PROCESSAMENTO_FALHOU`
-- [ ] `createProcessingRequest` leaves `failureCode` undefined
-- [ ] Unit tests assert a new request carries no failure code
-- [ ] Quick gate passes: `npm test`
+- [x] `FailureCode` is a closed union of `FORMATO_INVALIDO`, `DURACAO_EXCEDIDA` and `PROCESSAMENTO_FALHOU`
+- [x] `createProcessingRequest` leaves `failureCode` undefined
+- [x] Unit tests assert a new request carries no failure code
+- [x] Quick gate passes: `npm test`
 
 **Tests**: unit
 **Gate**: quick
@@ -109,10 +109,10 @@ T14
 
 **Done when**:
 
-- [ ] A `QUEUED` request becomes `PROCESSING` with `updatedAt` refreshed
-- [ ] Every other source state throws `ProcessingRequestDomainError`
-- [ ] A test asserts the request is unchanged after a rejected transition, not merely that it threw
-- [ ] Quick gate passes: `npm test`
+- [x] A `QUEUED` request becomes `PROCESSING` with `updatedAt` refreshed
+- [x] Every other source state throws `ProcessingRequestDomainError`
+- [x] A test asserts the request is unchanged after a rejected transition, not merely that it threw
+- [x] Quick gate passes: `npm test`
 
 **Tests**: unit
 **Gate**: quick
@@ -134,10 +134,10 @@ T14
 
 **Done when**:
 
-- [ ] Each of the three permitted source states reaches `FAILED` with the code recorded
-- [ ] A terminal source state throws and leaves the request unchanged
-- [ ] A test asserts the stored `failureCode` value, not only the resulting status
-- [ ] Quick gate passes: `npm test`
+- [x] Each of the three permitted source states reaches `FAILED` with the code recorded
+- [x] A terminal source state throws and leaves the request unchanged
+- [x] A test asserts the stored `failureCode` value, not only the resulting status
+- [x] Quick gate passes: `npm test`
 
 **Tests**: unit
 **Gate**: quick
@@ -159,10 +159,10 @@ T14
 
 **Done when**:
 
-- [ ] A `PROCESSING` request completes and records the `zipStorageKey`
-- [ ] A `QUEUED` request is rejected, covering the edge case that a completion without a start means a lost `ProcessingStarted`
-- [ ] Existing domain tests that assumed completion from `QUEUED` are updated to drive the full sequence, and no assertion is weakened
-- [ ] Quick gate passes: `npm test`
+- [x] A `PROCESSING` request completes and records the `zipStorageKey`
+- [x] A `QUEUED` request is rejected, covering the edge case that a completion without a start means a lost `ProcessingStarted`
+- [x] Existing domain tests that assumed completion from `QUEUED` are updated to drive the full sequence, and no assertion is weakened
+- [x] Quick gate passes: `npm test`
 
 **Tests**: unit
 **Gate**: quick
@@ -184,10 +184,10 @@ T14
 
 **Done when**:
 
-- [ ] Every member of the union maps to a distinct sentence
-- [ ] Adding a member without mapping it fails the type check rather than returning a generic sentence
-- [ ] A test asserts no produced sentence contains a storage key, a stack trace or an internal identifier
-- [ ] Build gate passes: `npm run lint && npm test && npm run test:e2e && npm run build`
+- [x] Every member of the union maps to a distinct sentence
+- [x] Adding a member without mapping it fails the type check rather than returning a generic sentence
+- [x] A test asserts no produced sentence contains a storage key, a stack trace or an internal identifier
+- [x] Build gate passes: `npm run lint && npm test && npm run test:e2e && npm run build`
 
 **Tests**: unit
 **Gate**: build
@@ -209,9 +209,9 @@ T14
 
 **Done when**:
 
-- [ ] `zipStorageKey` and `failureReason` are both optional
-- [ ] The existing publisher and its tests compile against the widened shape with no assertion weakened
-- [ ] Quick gate passes: `npm test`
+- [x] `zipStorageKey` and `failureReason` are both optional
+- [x] The existing publisher and its tests compile against the widened shape with no assertion weakened
+- [x] Quick gate passes: `npm test`
 
 **Tests**: none
 **Gate**: quick
@@ -233,11 +233,11 @@ T14
 
 **Done when**:
 
-- [ ] A valid event transitions the request and publishes nothing
-- [ ] A duplicate `eventId` returns the existing request and applies no second transition
-- [ ] An unknown `processingRequestId` is rejected and creates no request
-- [ ] A forbidden source state is rejected and leaves the stored state unchanged
-- [ ] Quick gate passes: `npm test`
+- [x] A valid event transitions the request and publishes nothing
+- [x] A duplicate `eventId` returns the existing request and applies no second transition
+- [x] An unknown `processingRequestId` is rejected and creates no request
+- [x] A forbidden source state is rejected and leaves the stored state unchanged
+- [x] Quick gate passes: `npm test`
 
 **Tests**: unit
 **Gate**: quick
@@ -259,12 +259,12 @@ T14
 
 **Done when**:
 
-- [ ] A valid rejection reaches `FAILED` and publishes exactly one terminal event
-- [ ] The published event carries `status` `FAILED` and a `failureReason`, and carries no `zipStorageKey`
-- [ ] An unrecognised failure code is rejected before the domain is touched
-- [ ] A duplicate `eventId` publishes no second event
-- [ ] A publication failure propagates and the event is not marked processed
-- [ ] Quick gate passes: `npm test`
+- [x] A valid rejection reaches `FAILED` and publishes exactly one terminal event
+- [x] The published event carries `status` `FAILED` and a `failureReason`, and carries no `zipStorageKey`
+- [x] An unrecognised failure code is rejected before the domain is touched
+- [x] A duplicate `eventId` publishes no second event
+- [x] A publication failure propagates and the event is not marked processed
+- [x] Quick gate passes: `npm test`
 
 **Tests**: unit
 **Gate**: quick
@@ -286,10 +286,10 @@ T14
 
 **Done when**:
 
-- [ ] Both permitted source states reach `FAILED` and publish exactly one terminal event each
-- [ ] A request already terminal is rejected and its stored state is unchanged
-- [ ] The published event carries the `attemptId` when the request had one, and omits it otherwise
-- [ ] Build gate passes: `npm run lint && npm test && npm run test:e2e && npm run build`
+- [x] Both permitted source states reach `FAILED` and publish exactly one terminal event each
+- [x] A request already terminal is rejected and its stored state is unchanged
+- [x] The published event carries the `attemptId` when the request had one, and omits it otherwise
+- [x] Build gate passes: `npm run lint && npm test && npm run test:e2e && npm run build`
 
 **Tests**: unit
 **Gate**: build
@@ -311,11 +311,11 @@ T14
 
 **Done when**:
 
-- [ ] A valid message delegates to the use case and is acked
-- [ ] A payload missing `processingRequestId` or `failureCode` is nacked without requeue
-- [ ] A technical fault is nacked **with** requeue, matching the existing policy
-- [ ] `handleMessage` is exercised directly, with no broker required
-- [ ] Quick gate passes: `npm test`
+- [x] A valid message delegates to the use case and is acked
+- [x] A payload missing `processingRequestId` or `failureCode` is nacked without requeue
+- [x] A technical fault is nacked **with** requeue, matching the existing policy
+- [x] `handleMessage` is exercised directly, with no broker required
+- [x] Quick gate passes: `npm test`
 
 **Tests**: unit
 **Gate**: quick
@@ -337,10 +337,10 @@ T14
 
 **Done when**:
 
-- [ ] A valid message transitions the request and is acked
-- [ ] A malformed payload is nacked without requeue
-- [ ] A duplicate delivery applies no second transition
-- [ ] Quick gate passes: `npm test`
+- [x] A valid message transitions the request and is acked
+- [x] A malformed payload is nacked without requeue
+- [x] A duplicate delivery applies no second transition
+- [x] Quick gate passes: `npm test`
 
 **Tests**: unit
 **Gate**: quick
@@ -362,10 +362,10 @@ T14
 
 **Done when**:
 
-- [ ] A valid message reaches `FAILED` and is acked
-- [ ] A malformed payload is nacked without requeue
-- [ ] A publication failure prevents the ack
-- [ ] Quick gate passes: `npm test`
+- [x] A valid message reaches `FAILED` and is acked
+- [x] A malformed payload is nacked without requeue
+- [x] A publication failure prevents the ack
+- [x] Quick gate passes: `npm test`
 
 **Tests**: unit
 **Gate**: quick
@@ -387,9 +387,9 @@ T14
 
 **Done when**:
 
-- [ ] All three use cases and all three consumers are registered
-- [ ] The application boots with the fake connection in the existing e2e setup
-- [ ] Full gate passes: `npm test && npm run test:e2e`
+- [x] All three use cases and all three consumers are registered
+- [x] The application boots with the fake connection in the existing e2e setup
+- [x] Full gate passes: `npm test && npm run test:e2e`
 
 **Tests**: e2e
 **Gate**: full
@@ -411,12 +411,12 @@ T14
 
 **Done when**:
 
-- [ ] One request reaches `COMPLETED` through `VideoAccepted`, `ProcessingStarted`, `ProcessingCompleted`, publishing one terminal event with a `zipStorageKey` and no `failureReason`
-- [ ] One request reaches `FAILED` through `VideoRejected`, publishing one terminal event with a `failureReason` and no `zipStorageKey`
-- [ ] One request reaches `FAILED` through `ProcessingFailed` after `ProcessingStarted`
-- [ ] Replaying every delivered event changes no stored state and publishes nothing further
-- [ ] Each published event is asserted by destination queue and pattern, not only by payload
-- [ ] Build gate passes: `npm run lint && npm test && npm run test:e2e && npm run build`
+- [x] One request reaches `COMPLETED` through `VideoAccepted`, `ProcessingStarted`, `ProcessingCompleted`, publishing one terminal event with a `zipStorageKey` and no `failureReason`
+- [x] One request reaches `FAILED` through `VideoRejected`, publishing one terminal event with a `failureReason` and no `zipStorageKey`
+- [x] One request reaches `FAILED` through `ProcessingFailed` after `ProcessingStarted`
+- [x] Replaying every delivered event changes no stored state and publishes nothing further
+- [x] Each published event is asserted by destination queue and pattern, not only by payload
+- [x] Build gate passes: `npm run lint && npm test && npm run test:e2e && npm run build`
 
 **Tests**: e2e
 **Gate**: build
@@ -511,3 +511,32 @@ No task depends on a task in a later phase.
 T6 is the only `Tests: none`, and the matrix assigns `none` to the DTO layer because it declares shape and carries no behaviour. Its correctness is proven where it is used, by T8, T9 and T14, each of which asserts the published payload field by field.
 
 T13 carries `e2e` rather than deferring: module wiring is what makes the consumers reachable, so its verification is the first point at which they can run at all.
+
+---
+
+## Execution record
+
+**Completed**: 2026-09-21 · merged in [#4](https://github.com/tech-challenge-workshop/processing-catalog/pull/4)
+
+Final gate: lint, typecheck, 102 unit tests, 12 e2e, build - all green. The full
+stack smoke reached `COMPLETED` across the four services.
+
+### Deviations
+
+| Deviation | Why |
+| --- | --- |
+| T1-T4 landed in one commit | They form a single state-machine change that does not compile in halves: `failureCode` without the transitions is a dead field, and tightening completion without `startProcessingRequest` makes `COMPLETED` unreachable |
+| One failure use case, not the two the design listed | Rejection and processing failure are the same transition reported by two events. Which source states are permitted is the domain's decision, so the second class would have differed in name only. Confirmed with the user before proceeding |
+| An interim domain call in the e2e between T4 and T14 | Tightening completion to require `PROCESSING` broke the suite before the `processing.started` consumer existed. The interim kept every gate green mid-slice and T14 replaced it with the real event |
+
+### Discovered during execution
+
+A defect no test in this plan could have caught: the stack would not start, because
+the three new consumers subscribed to queues nobody declared. A fake connection
+answers `consume` for any name. `queue-declaration.spec.ts` now reads the consumer
+sources and fails when a subscribed queue is missing from `RABBITMQ_QUEUES`.
+
+One process failure worth recording: a commit was made while lint and build were
+red, because the gate was chained with `&&` in a script that proceeded regardless.
+It was amended once the gate passed, and the remaining tasks verified each gate by
+explicit exit code.

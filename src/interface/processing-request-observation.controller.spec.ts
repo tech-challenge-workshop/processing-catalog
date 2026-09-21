@@ -48,7 +48,7 @@ describe('ProcessingRequestObservationController (integration)', () => {
       ownerUserId: 'user-123',
       sourceStorageKey: 'videos/input.mp4',
     });
-    repository.save(stored);
+    await repository.save(stored);
 
     const response = await request.get(
       `/processing-requests/${stored.processingRequestId}`,

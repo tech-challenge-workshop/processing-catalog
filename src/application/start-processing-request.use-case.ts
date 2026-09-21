@@ -4,6 +4,7 @@ import {
   ProcessingRequestDomainError,
   startProcessingRequest,
 } from '../domain/processing-request';
+import { UNIT_OF_WORK, type UnitOfWork } from './unit-of-work';
 import type { ProcessingRequestRepository } from '../domain/processing-request.repository';
 
 export interface StartProcessingRequestInput {
@@ -16,9 +17,10 @@ export class StartProcessingRequestUseCase {
   constructor(
     @Inject('ProcessingRequestRepository')
     private readonly repository: ProcessingRequestRepository,
+    @Inject(UNIT_OF_WORK)
+    private readonly unitOfWork: UnitOfWork,
   ) {}
 
-  // eslint-disable-next-line @typescript-eslint/require-await
   async execute(
     input: StartProcessingRequestInput,
   ): Promise<ProcessingRequest> {
@@ -32,14 +34,14 @@ export class StartProcessingRequestUseCase {
       throw new ProcessingRequestDomainError('processingRequestId is required');
     }
 
-    if (this.repository.hasEventBeenProcessed(input.eventId)) {
-      const existing = this.repository.findByEventId(input.eventId);
+    if (await this.repository.hasEventBeenProcessed(input.eventId)) {
+      const existing = await this.repository.findByEventId(input.eventId);
       if (existing) {
         return existing;
       }
     }
 
-    const request = this.repository.findByProcessingRequestId(
+    const request = await this.repository.findByProcessingRequestId(
       input.processingRequestId,
     );
     if (!request) {
@@ -50,11 +52,16 @@ export class StartProcessingRequestUseCase {
 
     const updated = startProcessingRequest(request);
 
-    this.repository.update(updated);
-    this.repository.markEventProcessed(
-      input.eventId,
-      updated.processingRequestId,
-    );
+    // No outbox row: entering PROCESSING is not a terminal outcome and no
+    // other service acts on it. The transaction still binds the state change
+    // to its deduplication record.
+    await this.unitOfWork.runInTransaction(async (ctx) => {
+      await ctx.requests.update(updated);
+      await ctx.requests.markEventProcessed(
+        input.eventId,
+        updated.processingRequestId,
+      );
+    });
 
     // Entering PROCESSING publishes nothing: it is not a terminal outcome and
     // no other service acts on it.

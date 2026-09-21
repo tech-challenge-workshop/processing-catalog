@@ -11,68 +11,68 @@ describe('InMemoryProcessingRequestRepository', () => {
     repository = new InMemoryProcessingRequestRepository();
   });
 
-  it('saves a request and finds it by processingRequestId', () => {
+  it('saves a request and finds it by processingRequestId', async () => {
     const request = createProcessingRequest({
       ownerUserId: 'user-123',
       sourceStorageKey: 'videos/input.mp4',
     });
 
-    repository.save(request);
+    await repository.save(request);
 
-    const found = repository.findByProcessingRequestId(
+    const found = await repository.findByProcessingRequestId(
       request.processingRequestId,
     );
     expect(found).toEqual(request);
   });
 
-  it('updates a request in place', () => {
+  it('updates a request in place', async () => {
     const request = createProcessingRequest({
       ownerUserId: 'user-123',
       sourceStorageKey: 'videos/input.mp4',
     });
-    repository.save(request);
+    await repository.save(request);
 
     const updated = acceptProcessingRequest(request);
-    repository.update(updated);
+    await repository.update(updated);
 
-    const found = repository.findByProcessingRequestId(
+    const found = await repository.findByProcessingRequestId(
       request.processingRequestId,
     );
     expect(found).toEqual(updated);
     expect(found?.status).toBe('QUEUED');
   });
 
-  it('returns undefined when processingRequestId is not found', () => {
-    const found = repository.findByProcessingRequestId('non-existent-id');
+  it('returns undefined when processingRequestId is not found', async () => {
+    const found = await repository.findByProcessingRequestId('non-existent-id');
     expect(found).toBeUndefined();
   });
 
-  it('tracks a processed eventId and detects duplicates', () => {
+  it('tracks a processed eventId and detects duplicates', async () => {
     const eventId = 'event-123';
 
-    expect(repository.hasEventBeenProcessed(eventId)).toBe(false);
+    expect(await repository.hasEventBeenProcessed(eventId)).toBe(false);
 
-    repository.markEventProcessed(eventId);
+    await repository.markEventProcessed(eventId);
 
-    expect(repository.hasEventBeenProcessed(eventId)).toBe(true);
+    expect(await repository.hasEventBeenProcessed(eventId)).toBe(true);
   });
 
-  it('finds a request saved under a given eventId', () => {
+  it('finds a request saved under a given eventId', async () => {
     const eventId = 'event-456';
     const request = createProcessingRequest({
       ownerUserId: 'user-456',
       sourceStorageKey: 'videos/another.mp4',
     });
 
-    repository.save(request);
-    repository.markEventProcessed(eventId, request.processingRequestId);
+    await repository.save(request);
+    await repository.markEventProcessed(eventId, request.processingRequestId);
 
-    const found = repository.findByEventId(eventId);
+    const found = await repository.findByEventId(eventId);
     expect(found).toEqual(request);
   });
 
-  it('returns undefined when eventId is not found', () => {
-    const found = repository.findByEventId('non-existent-event');
+  it('returns undefined when eventId is not found', async () => {
+    const found = await repository.findByEventId('non-existent-event');
     expect(found).toBeUndefined();
   });
 });

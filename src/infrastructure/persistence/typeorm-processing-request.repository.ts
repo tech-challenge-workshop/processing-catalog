@@ -1,0 +1,98 @@
+import { DataSource, EntityManager } from 'typeorm';
+import {
+  FailureCode,
+  ProcessingRequest,
+  ProcessingRequestStatus,
+} from '../../domain/processing-request';
+import { ProcessingRequestRepository } from '../../domain/processing-request.repository';
+import { ProcessedEventEntity } from './processed-event.entity';
+import { ProcessingRequestEntity } from './processing-request.entity';
+
+function toDomain(row: ProcessingRequestEntity): ProcessingRequest {
+  return {
+    processingRequestId: row.processingRequestId,
+    ownerUserId: row.ownerUserId,
+    sourceStorageKey: row.sourceStorageKey,
+    status: row.status as ProcessingRequestStatus,
+    // Absent stays absent: a null column must not become an empty string.
+    attemptId: row.attemptId ?? undefined,
+    zipStorageKey: row.zipStorageKey ?? undefined,
+    failureCode: (row.failureCode as FailureCode | null) ?? undefined,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+function toRow(request: ProcessingRequest): ProcessingRequestEntity {
+  const row = new ProcessingRequestEntity();
+  row.processingRequestId = request.processingRequestId;
+  row.ownerUserId = request.ownerUserId;
+  row.sourceStorageKey = request.sourceStorageKey;
+  row.status = request.status;
+  row.attemptId = request.attemptId ?? null;
+  row.zipStorageKey = request.zipStorageKey ?? null;
+  row.failureCode = request.failureCode ?? null;
+  row.createdAt = request.createdAt;
+  row.updatedAt = request.updatedAt;
+  return row;
+}
+
+export class TypeOrmProcessingRequestRepository implements ProcessingRequestRepository {
+  /**
+   * Takes an EntityManager rather than a DataSource so the same class serves
+   * both a plain connection and a transaction: the unit of work hands it the
+   * transactional manager, and nothing else can write outside it.
+   */
+  constructor(private readonly manager: EntityManager) {}
+
+  static fromDataSource(
+    dataSource: DataSource,
+  ): TypeOrmProcessingRequestRepository {
+    return new TypeOrmProcessingRequestRepository(dataSource.manager);
+  }
+
+  async save(request: ProcessingRequest): Promise<void> {
+    await this.manager.insert(ProcessingRequestEntity, toRow(request));
+  }
+
+  async update(request: ProcessingRequest): Promise<void> {
+    await this.manager.save(ProcessingRequestEntity, toRow(request));
+  }
+
+  async findByProcessingRequestId(
+    processingRequestId: string,
+  ): Promise<ProcessingRequest | undefined> {
+    const row = await this.manager.findOne(ProcessingRequestEntity, {
+      where: { processingRequestId },
+    });
+    return row ? toDomain(row) : undefined;
+  }
+
+  async findByEventId(eventId: string): Promise<ProcessingRequest | undefined> {
+    const event = await this.manager.findOne(ProcessedEventEntity, {
+      where: { eventId },
+    });
+    if (!event?.processingRequestId) {
+      return undefined;
+    }
+    return this.findByProcessingRequestId(event.processingRequestId);
+  }
+
+  async markEventProcessed(
+    eventId: string,
+    processingRequestId?: string,
+  ): Promise<void> {
+    const row = new ProcessedEventEntity();
+    row.eventId = eventId;
+    row.processingRequestId = processingRequestId ?? null;
+    row.processedAt = new Date();
+    await this.manager.insert(ProcessedEventEntity, row);
+  }
+
+  async hasEventBeenProcessed(eventId: string): Promise<boolean> {
+    const count = await this.manager.count(ProcessedEventEntity, {
+      where: { eventId },
+    });
+    return count > 0;
+  }
+}

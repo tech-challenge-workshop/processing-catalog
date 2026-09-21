@@ -1,10 +1,13 @@
+import {
+  InMemoryOutboxWriter,
+  InMemoryUnitOfWork,
+} from '../infrastructure/in-memory-unit-of-work';
 import { Test } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import supertest from 'supertest';
 import { CreateProcessingRequestController } from './create-processing-request.controller';
 import { CreateProcessingRequestUseCase } from '../application/create-processing-request.use-case';
 import { InMemoryProcessingRequestRepository } from '../infrastructure/in-memory-processing-request.repository';
-import { InMemoryEventPublisher } from '../infrastructure/in-memory-event-publisher';
 
 interface CreateProcessingRequestResponse {
   processingRequestId: string;
@@ -16,13 +19,15 @@ interface CreateProcessingRequestResponse {
 
 describe('CreateProcessingRequestController (integration)', () => {
   let app: INestApplication;
-  let publisher: InMemoryEventPublisher;
+  let outbox: InMemoryOutboxWriter;
+  let unitOfWork: InMemoryUnitOfWork;
   let request: ReturnType<typeof supertest>;
 
   beforeEach(async () => {
     const repository = new InMemoryProcessingRequestRepository();
-    publisher = new InMemoryEventPublisher();
-    const useCase = new CreateProcessingRequestUseCase(repository, publisher);
+    outbox = new InMemoryOutboxWriter();
+    unitOfWork = new InMemoryUnitOfWork(repository, outbox);
+    const useCase = new CreateProcessingRequestUseCase(repository, unitOfWork);
 
     const moduleRef = await Test.createTestingModule({
       controllers: [CreateProcessingRequestController],

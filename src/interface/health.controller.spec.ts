@@ -3,6 +3,7 @@ import { INestApplication } from '@nestjs/common';
 import supertest from 'supertest';
 import { HealthController } from './health.controller';
 import { RabbitMQHealthIndicator } from '../infrastructure/rabbitmq/rabbitmq.health-indicator';
+import { DatabaseHealthIndicator } from '../infrastructure/persistence/database.health-indicator';
 
 describe('HealthController (integration)', () => {
   let app: INestApplication;
@@ -18,6 +19,12 @@ describe('HealthController (integration)', () => {
         {
           provide: RabbitMQHealthIndicator,
           useValue: indicator,
+        },
+        {
+          // No database configured in this suite, which the indicator reports
+          // as healthy: the service is deliberately running in memory.
+          provide: DatabaseHealthIndicator,
+          useValue: new DatabaseHealthIndicator(undefined),
         },
       ],
     }).compile();
@@ -37,7 +44,11 @@ describe('HealthController (integration)', () => {
     const response = await request.get('/health');
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ status: 'ok', rabbitmq: 'up' });
+    expect(response.body).toEqual({
+      status: 'ok',
+      rabbitmq: 'up',
+      database: 'up',
+    });
   });
 
   it('returns 503 when RabbitMQ is down', async () => {
@@ -46,6 +57,10 @@ describe('HealthController (integration)', () => {
     const response = await request.get('/health');
 
     expect(response.status).toBe(503);
-    expect(response.body).toEqual({ status: 'error', rabbitmq: 'down' });
+    expect(response.body).toEqual({
+      status: 'error',
+      rabbitmq: 'down',
+      database: 'up',
+    });
   });
 });

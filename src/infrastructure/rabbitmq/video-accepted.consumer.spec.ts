@@ -1,27 +1,32 @@
+import {
+  InMemoryOutboxWriter,
+  InMemoryUnitOfWork,
+} from '../in-memory-unit-of-work';
 import { AcceptProcessingRequestUseCase } from '../../application/accept-processing-request.use-case';
 import { CreateProcessingRequestUseCase } from '../../application/create-processing-request.use-case';
 import { ProcessingRequestDomainError } from '../../domain/processing-request';
-import { InMemoryEventPublisher } from '../in-memory-event-publisher';
 import { InMemoryProcessingRequestRepository } from '../in-memory-processing-request.repository';
 import { VideoAcceptedConsumer } from './video-accepted.consumer';
 
 describe('VideoAcceptedConsumer', () => {
   let repository: InMemoryProcessingRequestRepository;
-  let publisher: InMemoryEventPublisher;
+  let outbox: InMemoryOutboxWriter;
+  let unitOfWork: InMemoryUnitOfWork;
   let useCase: AcceptProcessingRequestUseCase;
   let consumer: VideoAcceptedConsumer;
 
   beforeEach(() => {
     repository = new InMemoryProcessingRequestRepository();
-    publisher = new InMemoryEventPublisher();
-    useCase = new AcceptProcessingRequestUseCase(repository, publisher);
+    outbox = new InMemoryOutboxWriter();
+    unitOfWork = new InMemoryUnitOfWork(repository, outbox);
+    useCase = new AcceptProcessingRequestUseCase(repository, unitOfWork);
     consumer = new VideoAcceptedConsumer({} as never, useCase);
   });
 
   const createRequest = async () => {
     const createUseCase = new CreateProcessingRequestUseCase(
       repository,
-      publisher,
+      unitOfWork,
     );
     return createUseCase.execute({
       eventId: 'create-event-1',
@@ -40,11 +45,11 @@ describe('VideoAcceptedConsumer', () => {
 
     await consumer.handleMessage(content);
 
-    const found = repository.findByProcessingRequestId(
+    const found = await repository.findByProcessingRequestId(
       request.processingRequestId,
     );
     expect(found?.status).toBe('QUEUED');
-    expect(publisher.publishedProcessingQueued).toHaveLength(1);
+    expect(outbox.recordedProcessingQueued).toHaveLength(1);
   });
 
   it('is idempotent for the same eventId', async () => {
@@ -58,7 +63,7 @@ describe('VideoAcceptedConsumer', () => {
     await consumer.handleMessage(content);
     await consumer.handleMessage(content);
 
-    expect(publisher.publishedProcessingQueued).toHaveLength(1);
+    expect(outbox.recordedProcessingQueued).toHaveLength(1);
   });
 
   it('rejects an invalid payload', async () => {
@@ -68,7 +73,7 @@ describe('VideoAcceptedConsumer', () => {
       ProcessingRequestDomainError,
     );
 
-    expect(publisher.publishedProcessingQueued).toHaveLength(0);
+    expect(outbox.recordedProcessingQueued).toHaveLength(0);
   });
 
   it('rejects an unsupported transition', async () => {
@@ -91,14 +96,14 @@ describe('VideoAcceptedConsumer', () => {
       ),
     ).rejects.toBeInstanceOf(ProcessingRequestDomainError);
 
-    expect(publisher.publishedProcessingQueued).toHaveLength(1);
+    expect(outbox.recordedProcessingQueued).toHaveLength(1);
   });
 
   it('propagates publication failures', async () => {
     const request = await createRequest();
-    publisher.publishProcessingQueued = () => {
-      throw new Error('broker down');
-    };
+    // The use case no longer publishes: a failure to record the event in the
+    // outbox is what must abort the transition now.
+    outbox.add = () => Promise.reject(new Error('outbox write failed'));
 
     await expect(
       consumer.handleMessage(
@@ -108,6 +113,6 @@ describe('VideoAcceptedConsumer', () => {
           occurredAt: new Date().toISOString(),
         }),
       ),
-    ).rejects.toThrow('broker down');
+    ).rejects.toThrow('outbox write failed');
   });
 });

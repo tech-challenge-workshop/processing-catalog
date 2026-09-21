@@ -8,6 +8,23 @@ import { CompleteProcessingRequestUseCase } from './application/complete-process
 import { StartProcessingRequestUseCase } from './application/start-processing-request.use-case';
 import { FailProcessingRequestUseCase } from './application/fail-processing-request.use-case';
 import { InMemoryProcessingRequestRepository } from './infrastructure/in-memory-processing-request.repository';
+import { DatabaseHealthIndicator } from './infrastructure/persistence/database.health-indicator';
+import { DataSource } from 'typeorm';
+import { RabbitMQConnection } from './infrastructure/rabbitmq/rabbitmq.connection';
+import { UNIT_OF_WORK } from './application/unit-of-work';
+import {
+  DATA_SOURCE,
+  createDataSource,
+  isDatabaseConfigured,
+} from './infrastructure/persistence/data-source';
+import { TypeOrmProcessingRequestRepository } from './infrastructure/persistence/typeorm-processing-request.repository';
+import { TypeOrmUnitOfWork } from './infrastructure/persistence/typeorm-unit-of-work';
+import { OutboxRelay } from './infrastructure/messaging/outbox-relay';
+import { OutboxRelayScheduler } from './infrastructure/messaging/outbox-relay.scheduler';
+import {
+  InMemoryOutboxWriter,
+  InMemoryUnitOfWork,
+} from './infrastructure/in-memory-unit-of-work';
 import { InMemoryEventPublisher } from './infrastructure/in-memory-event-publisher';
 import { RabbitMQModule } from './infrastructure/rabbitmq/rabbitmq.module';
 import { RabbitMQEventPublisher } from './infrastructure/rabbitmq/rabbitmq.event-publisher';
@@ -38,9 +55,61 @@ const isLocalIntegration = () => process.env.LOCAL_INTEGRATION === 'true';
     StartProcessingRequestUseCase,
     FailProcessingRequestUseCase,
     InMemoryProcessingRequestRepository,
+    DatabaseHealthIndicator,
+    InMemoryOutboxWriter,
+    {
+      // With no database configured the service runs entirely in memory, so
+      // the unit suite and a bare `npm start` need no container. When one is
+      // configured, migrations are applied before any event is accepted.
+      provide: DATA_SOURCE,
+      useFactory: async (): Promise<DataSource | undefined> => {
+        if (!isDatabaseConfigured()) {
+          return undefined;
+        }
+        const dataSource = createDataSource();
+        await dataSource.initialize();
+        await dataSource.runMigrations();
+        return dataSource;
+      },
+    },
+    {
+      provide: OutboxRelay,
+      useFactory: (
+        dataSource: DataSource | undefined,
+        connection: RabbitMQConnection,
+      ) => (dataSource ? new OutboxRelay(dataSource, connection) : undefined),
+      inject: [DATA_SOURCE, RabbitMQConnection],
+    },
+    OutboxRelayScheduler,
+    {
+      // The in-memory unit of work until the data source is wired in; it
+      // cannot roll back, which is why atomicity is asserted only against
+      // PostgreSQL in the integration suite.
+      provide: UNIT_OF_WORK,
+      useFactory: (
+        repository: InMemoryProcessingRequestRepository,
+        outbox: InMemoryOutboxWriter,
+        dataSource?: DataSource,
+      ) =>
+        dataSource
+          ? new TypeOrmUnitOfWork(dataSource)
+          : new InMemoryUnitOfWork(repository, outbox),
+      inject: [
+        InMemoryProcessingRequestRepository,
+        InMemoryOutboxWriter,
+        DATA_SOURCE,
+      ],
+    },
     {
       provide: 'ProcessingRequestRepository',
-      useExisting: InMemoryProcessingRequestRepository,
+      useFactory: (
+        inMemory: InMemoryProcessingRequestRepository,
+        dataSource?: DataSource,
+      ) =>
+        dataSource
+          ? TypeOrmProcessingRequestRepository.fromDataSource(dataSource)
+          : inMemory,
+      inject: [InMemoryProcessingRequestRepository, DATA_SOURCE],
     },
     InMemoryEventPublisher,
     {

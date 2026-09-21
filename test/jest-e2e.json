@@ -1,11 +1,19 @@
 {
-  "moduleFileExtensions": ["js", "json", "ts"],
+  "moduleFileExtensions": [
+    "js",
+    "json",
+    "ts"
+  ],
   "rootDir": ".",
   "testEnvironment": "node",
   "testRegex": ".e2e-spec.ts$",
-  "testPathIgnorePatterns": ["/node_modules/", "/\\._"],
+  "testPathIgnorePatterns": [
+    "/node_modules/",
+    "/\\._"
+  ],
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"
   },
-  "forceExit": true
+  "forceExit": true,
+  "maxWorkers": 1
 }
