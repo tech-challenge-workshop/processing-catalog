@@ -7,11 +7,21 @@ import {
 
 export const RABBITMQ_EXCHANGE = 'fiapx.events';
 
+/**
+ * Every queue the Catalog publishes to or consumes from.
+ *
+ * Asserted at channel setup, so a consumer never depends on a producer having
+ * connected first: consuming a queue nobody declared fails the process with a
+ * 404 at startup.
+ */
 export const RABBITMQ_QUEUES = [
   'video.validation.requested',
   'video.accepted',
+  'video.rejected',
   'processing.queued',
+  'processing.started',
   'processing.completed',
+  'processing.failed',
   'processing.terminal',
 ] as const;
 
