@@ -29,6 +29,17 @@ import * as ts from 'typescript';
 /** Where the routing this guard protects is actually configured. */
 const POLICY_LOCATION = 'fiap-x-platform/rabbitmq/definitions.json';
 
+/**
+ * The readable name of whatever a queue is identified by.
+ *
+ * Only a string literal has quotes worth removing. Stripping them from an
+ * arbitrary expression mangles it - `process.env.RABBITMQ_QUEUE ?? 'x'` comes
+ * back with one quote missing - and a failure message nobody can parse is a
+ * failure message nobody acts on.
+ */
+const readableName = (node: ts.Node): string =>
+  ts.isStringLiteralLike(node) ? node.text : node.getText();
+
 interface Declaration {
   file: string;
   line: number;
@@ -68,9 +79,9 @@ const keysOfArgumentsProperty = (
       // report it rather than let it through unseen.
       return ['<not a literal this guard can read>'];
     }
-    return property.initializer.properties
-      .map((entry) => entry.name?.getText() ?? '<computed>')
-      .map((name) => name.replace(/^['"]|['"]$/g, ''));
+    return property.initializer.properties.map((entry) =>
+      entry.name ? readableName(entry.name) : '<computed>',
+    );
   }
   return undefined;
 };
@@ -127,11 +138,7 @@ const declarationsWithArguments = (files: string[]): Declaration[] => {
       ) {
         const options = node.arguments[1];
         if (ts.isObjectLiteralExpression(options)) {
-          record(
-            node,
-            node.arguments[0].getText().replace(/^['"]|['"]$/g, ''),
-            options,
-          );
+          record(node, readableName(node.arguments[0]), options);
         }
       }
 
@@ -162,7 +169,7 @@ const declarationsWithArguments = (files: string[]): Declaration[] => {
         // defaulting to "allowed" is how the original defect shipped.
         const queue = sibling
           ? ts.isPropertyAssignment(sibling)
-            ? sibling.initializer.getText().replace(/^['"]|['"]$/g, '')
+            ? readableName(sibling.initializer)
             : sibling.name.getText()
           : '<a queue this guard cannot name>';
         record(node, queue, node.initializer);
@@ -201,11 +208,11 @@ describe('broker topology (AD-011)', () => {
     const explained = violations.map(
       (violation) =>
         `${relative(process.cwd(), violation.file)}:${violation.line} ` +
-        `declares '${violation.queue}' ` +
+        `declares queue ${violation.queue} ` +
         `with arguments [${violation.argumentKeys.join(', ')}]. ` +
-        `AD-011: another service declares this queue too, and RabbitMQ will ` +
-        `close whichever channel declares second. Configure it as a policy ` +
-        `in ${POLICY_LOCATION} instead.`,
+        `AD-011: a queue that more than one service declares cannot carry ` +
+        `arguments - RabbitMQ closes whichever channel declares second. ` +
+        `Configure it as a policy in ${POLICY_LOCATION} instead.`,
     );
 
     expect(explained).toEqual([]);
