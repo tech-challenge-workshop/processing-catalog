@@ -9,7 +9,10 @@ import { Column, Entity, PrimaryColumn } from 'typeorm';
  */
 @Entity({ name: 'processed_event' })
 export class ProcessedEventEntity {
-  @PrimaryColumn({ name: 'event_id', type: 'uuid' })
+  // `text`, not `uuid`: eventId arrives from another service and the
+  // contracts declare it a string. Narrowing it here would reject a publisher
+  // that honours the contract.
+  @PrimaryColumn({ name: 'event_id', type: 'text' })
   eventId: string;
 
   @Column({ name: 'processing_request_id', type: 'uuid', nullable: true })

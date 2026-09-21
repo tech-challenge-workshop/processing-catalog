@@ -22,7 +22,7 @@ export class CreateProcessingRequest1789953000000 implements MigrationInterface 
     // replicas racing the same event produce one row and one rejection.
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS processed_event (
-        event_id              uuid        PRIMARY KEY,
+        event_id              text        PRIMARY KEY,
         processing_request_id uuid        NULL,
         processed_at          timestamptz NOT NULL
       )
