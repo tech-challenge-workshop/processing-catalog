@@ -196,7 +196,9 @@ describe('lifecycle consumers', () => {
       repository.update(startProcessingRequest(request));
       jest
         .spyOn(publisher, 'publishTerminalEvent')
-        .mockRejectedValueOnce(new Error('broker down'));
+        .mockImplementationOnce(() => {
+          throw new Error('broker down');
+        });
 
       await expect(
         consumer().handleMessage(

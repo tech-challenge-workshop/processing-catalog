@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import supertest, { SuperTest, Test as RequestTest } from 'supertest';
+import supertest from 'supertest';
 import { ProcessingRequestObservationController } from './processing-request-observation.controller';
 import { InMemoryProcessingRequestRepository } from '../infrastructure/in-memory-processing-request.repository';
 import { createProcessingRequest } from '../domain/processing-request';
@@ -19,7 +19,7 @@ interface ProcessingRequestStateResponse {
 describe('ProcessingRequestObservationController (integration)', () => {
   let app: INestApplication;
   let repository: InMemoryProcessingRequestRepository;
-  let request: SuperTest<RequestTest>;
+  let request: ReturnType<typeof supertest>;
 
   beforeEach(async () => {
     repository = new InMemoryProcessingRequestRepository();

@@ -173,9 +173,9 @@ describe('FailProcessingRequestUseCase', () => {
 
   it('does not mark the event processed when publication fails', async () => {
     const request = await received();
-    jest
-      .spyOn(publisher, 'publishTerminalEvent')
-      .mockRejectedValueOnce(new Error('broker down'));
+    jest.spyOn(publisher, 'publishTerminalEvent').mockImplementationOnce(() => {
+      throw new Error('broker down');
+    });
 
     await expect(
       useCase.execute({

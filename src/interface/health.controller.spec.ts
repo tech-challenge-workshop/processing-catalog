@@ -1,13 +1,13 @@
 import { Test } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import supertest, { SuperTest, Test as RequestTest } from 'supertest';
+import supertest from 'supertest';
 import { HealthController } from './health.controller';
 import { RabbitMQHealthIndicator } from '../infrastructure/rabbitmq/rabbitmq.health-indicator';
 
 describe('HealthController (integration)', () => {
   let app: INestApplication;
   let indicator: { isHealthy: jest.Mock };
-  let request: SuperTest<RequestTest>;
+  let request: ReturnType<typeof supertest>;
 
   beforeEach(async () => {
     indicator = { isHealthy: jest.fn() };

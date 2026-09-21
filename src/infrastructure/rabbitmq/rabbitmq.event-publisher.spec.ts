@@ -1,3 +1,4 @@
+import { ProcessingRequestStatus } from '../../domain/processing-request';
 import { RabbitMQEventPublisher } from './rabbitmq.event-publisher';
 import { type RabbitMQConnection } from './rabbitmq.connection';
 
@@ -57,7 +58,7 @@ describe('RabbitMQEventPublisher', () => {
       eventId: 'event-3',
       processingRequestId: 'req-3',
       ownerUserId: 'user-3',
-      status: 'COMPLETED' as const,
+      status: ProcessingRequestStatus.COMPLETED,
       zipStorageKey: 'zips/output.zip',
       occurredAt: new Date().toISOString(),
     };
