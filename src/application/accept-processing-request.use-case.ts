@@ -43,18 +43,23 @@ export class AcceptProcessingRequestUseCase {
       }
     }
 
-    const request = await this.repository.findByProcessingRequestId(
-      input.processingRequestId,
-    );
-    if (!request) {
-      throw new ProcessingRequestDomainError(
-        `Processing request ${input.processingRequestId} not found`,
+    return this.unitOfWork.runInTransaction(async (ctx) => {
+      const request = await ctx.requests.findForUpdate(
+        input.processingRequestId,
       );
-    }
+      if (!request) {
+        throw new ProcessingRequestDomainError(
+          `Processing request ${input.processingRequestId} not found`,
+        );
+      }
+      // Checked again under the lock: the check above can race a concurrent
+      // delivery of the same event.
+      if (await ctx.requests.hasEventBeenProcessed(input.eventId)) {
+        return request;
+      }
 
-    const updated = acceptProcessingRequest(request);
+      const updated = acceptProcessingRequest(request);
 
-    await this.unitOfWork.runInTransaction(async (ctx) => {
       await ctx.requests.update(updated);
       await ctx.outbox.add(
         EVENT_ROUTES.ProcessingQueued.queue,
@@ -72,8 +77,7 @@ export class AcceptProcessingRequestUseCase {
         input.eventId,
         updated.processingRequestId,
       );
+      return updated;
     });
-
-    return updated;
   }
 }

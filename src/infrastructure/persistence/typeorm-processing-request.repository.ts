@@ -68,6 +68,18 @@ export class TypeOrmProcessingRequestRepository implements ProcessingRequestRepo
     return row ? toDomain(row) : undefined;
   }
 
+  async findForUpdate(
+    processingRequestId: string,
+  ): Promise<ProcessingRequest | undefined> {
+    // SELECT ... FOR UPDATE: a second transaction for the same request waits
+    // here until the first commits, then reads the status it left behind.
+    const row = await this.manager.findOne(ProcessingRequestEntity, {
+      where: { processingRequestId },
+      lock: { mode: 'pessimistic_write' },
+    });
+    return row ? toDomain(row) : undefined;
+  }
+
   async findByEventId(eventId: string): Promise<ProcessingRequest | undefined> {
     const event = await this.manager.findOne(ProcessedEventEntity, {
       where: { eventId },

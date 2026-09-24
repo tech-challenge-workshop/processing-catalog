@@ -3,6 +3,7 @@ import { CompleteProcessingRequestUseCase } from '../../application/complete-pro
 import { ProcessingRequestDomainError } from '../../domain/processing-request';
 import { ProcessingCompletedDto } from '../../messaging/dto';
 import { RabbitMQConnection } from './rabbitmq.connection';
+import { settleFailedMessage } from './settle-failed-message';
 
 @Injectable()
 export class ProcessingCompletedConsumer implements OnModuleInit {
@@ -21,10 +22,7 @@ export class ProcessingCompletedConsumer implements OnModuleInit {
 
       void this.handleMessage(message.content.toString())
         .then(() => channel.ack(message))
-        .catch((error) => {
-          const requeue = !(error instanceof ProcessingRequestDomainError);
-          channel.nack(message, false, requeue);
-        });
+        .catch((error) => settleFailedMessage(channel, message, error));
     });
   }
 

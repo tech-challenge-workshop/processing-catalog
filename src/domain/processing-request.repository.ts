@@ -11,6 +11,16 @@ export interface ProcessingRequestRepository {
   findByProcessingRequestId(
     processingRequestId: string,
   ): Promise<ProcessingRequest | undefined>;
+  /**
+   * Reads a request and holds it until the enclosing transaction ends.
+   *
+   * Two events for the same request - a start and a completion racing on
+   * different queues - would otherwise both read the old status and the last
+   * write would win. Only meaningful inside a unit of work.
+   */
+  findForUpdate(
+    processingRequestId: string,
+  ): Promise<ProcessingRequest | undefined>;
   findByEventId(eventId: string): Promise<ProcessingRequest | undefined>;
   markEventProcessed(
     eventId: string,

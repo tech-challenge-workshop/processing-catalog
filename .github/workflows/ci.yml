@@ -14,8 +14,46 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # The persistence suites guard themselves with `DATABASE_HOST ? describe :
+    # describe.skip`. Without a database here they skipped silently and the
+    # check stayed green: atomicity, the outbox and deduplication were never
+    # verified in CI. The database below and the skip guard after the e2e run
+    # close that together.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: fiapx
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d fiapx"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_HOST: localhost
+      DATABASE_PORT: 5432
+      DATABASE_NAME: fiapx
+      DATABASE_SCHEMA: catalog
+      DATABASE_USER: catalog
+      DATABASE_PASSWORD: catalog
     steps:
       - uses: actions/checkout@v4
+      # The schema and role come from the platform's bootstrap, the same file
+      # the local topology runs, so CI cannot drift from what the stack uses.
+      # The repository is public, so no token is needed.
+      - uses: actions/checkout@v4
+        with:
+          repository: tech-challenge-workshop/fiap-x-platform
+          path: .platform
+          sparse-checkout: db/init
+      - name: Bootstrap the database
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -d fiapx -v ON_ERROR_STOP=1 -f .platform/db/init/01-schemas.sql
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -24,7 +62,18 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test -- --coverage
-      - run: npm run test:e2e
+      - run: npm run test:e2e -- --json --outputFile=e2e-results.json
+      - name: Fail if any e2e test was skipped
+        run: |
+          node -e '
+            const r = require("./e2e-results.json");
+            const skipped = r.numPendingTests + r.numTodoTests;
+            console.log(r.numPassedTests + " passed, " + skipped + " skipped");
+            if (skipped > 0) {
+              console.error("e2e tests were skipped - a green run would not mean they passed");
+              process.exit(1);
+            }
+          '
       - run: npm run build
       - name: Upload coverage summary
         if: always()

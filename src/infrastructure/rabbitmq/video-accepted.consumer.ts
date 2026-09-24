@@ -3,6 +3,7 @@ import { AcceptProcessingRequestUseCase } from '../../application/accept-process
 import { ProcessingRequestDomainError } from '../../domain/processing-request';
 import { VideoAcceptedDto } from '../../messaging/dto';
 import { RabbitMQConnection } from './rabbitmq.connection';
+import { settleFailedMessage } from './settle-failed-message';
 
 @Injectable()
 export class VideoAcceptedConsumer implements OnModuleInit {
@@ -21,10 +22,7 @@ export class VideoAcceptedConsumer implements OnModuleInit {
 
       void this.handleMessage(message.content.toString())
         .then(() => channel.ack(message))
-        .catch((error) => {
-          const requeue = !(error instanceof ProcessingRequestDomainError);
-          channel.nack(message, false, requeue);
-        });
+        .catch((error) => settleFailedMessage(channel, message, error));
     });
   }
 

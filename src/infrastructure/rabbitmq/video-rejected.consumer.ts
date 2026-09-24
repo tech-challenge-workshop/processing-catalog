@@ -6,6 +6,7 @@ import {
 } from '../../domain/processing-request';
 import { VideoRejectedDto } from '../../messaging/dto';
 import { RabbitMQConnection } from './rabbitmq.connection';
+import { settleFailedMessage } from './settle-failed-message';
 
 @Injectable()
 export class VideoRejectedConsumer implements OnModuleInit {
@@ -24,12 +25,7 @@ export class VideoRejectedConsumer implements OnModuleInit {
 
       void this.handleMessage(message.content.toString())
         .then(() => channel.ack(message))
-        .catch((error) => {
-          // A contract violation cannot become valid by being redelivered;
-          // a technical fault can.
-          const requeue = !(error instanceof ProcessingRequestDomainError);
-          channel.nack(message, false, requeue);
-        });
+        .catch((error) => settleFailedMessage(channel, message, error));
     });
   }
 
