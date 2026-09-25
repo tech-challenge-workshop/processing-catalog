@@ -26,6 +26,16 @@ export class InMemoryProcessingRequestRepository implements ProcessingRequestRep
     return Promise.resolve(this.requests.get(processingRequestId));
   }
 
+  /**
+   * No lock: a single-threaded map has no concurrent writer to wait for. The
+   * locking behaviour is proven against PostgreSQL in the integration suite.
+   */
+  findForUpdate(
+    processingRequestId: string,
+  ): Promise<ProcessingRequest | undefined> {
+    return this.findByProcessingRequestId(processingRequestId);
+  }
+
   findByEventId(eventId: string): Promise<ProcessingRequest | undefined> {
     const processingRequestId = this.eventIdToRequestId.get(eventId);
     if (!processingRequestId) {

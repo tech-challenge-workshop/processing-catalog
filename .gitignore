@@ -15,3 +15,6 @@ coverage/
 Thumbs.db
 .idea/
 .vscode/
+
+# e2e run summary written by CI (and by `npm run test:e2e -- --json`)
+e2e-results.json

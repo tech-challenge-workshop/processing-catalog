@@ -4,6 +4,7 @@ import {
   ProcessingRequest,
   ProcessingRequestDomainError,
   completeProcessingRequest,
+  isUnchanged,
 } from '../domain/processing-request';
 import { EVENT_ROUTES } from './event-routes';
 import { UNIT_OF_WORK, type UnitOfWork } from './unit-of-work';
@@ -47,18 +48,33 @@ export class CompleteProcessingRequestUseCase {
       }
     }
 
-    const request = await this.repository.findByProcessingRequestId(
-      input.processingRequestId,
-    );
-    if (!request) {
-      throw new ProcessingRequestDomainError(
-        `Processing request ${input.processingRequestId} not found`,
+    return this.unitOfWork.runInTransaction(async (ctx) => {
+      const request = await ctx.requests.findForUpdate(
+        input.processingRequestId,
       );
-    }
+      if (!request) {
+        throw new ProcessingRequestDomainError(
+          `Processing request ${input.processingRequestId} not found`,
+        );
+      }
+      // Checked again under the lock: the check above can race a concurrent
+      // delivery of the same event.
+      if (await ctx.requests.hasEventBeenProcessed(input.eventId)) {
+        return request;
+      }
 
-    const updated = completeProcessingRequest(request, input.zipStorageKey);
+      const updated = completeProcessingRequest(request, input.zipStorageKey);
 
-    await this.unitOfWork.runInTransaction(async (ctx) => {
+      if (isUnchanged(request, updated)) {
+        // Already completed with this archive: the terminal event went out
+        // the first time, so a second one would notify the owner twice.
+        await ctx.requests.markEventProcessed(
+          input.eventId,
+          updated.processingRequestId,
+        );
+        return updated;
+      }
+
       await ctx.requests.update(updated);
       await ctx.outbox.add(
         EVENT_ROUTES.TerminalEvent.queue,
@@ -77,8 +93,7 @@ export class CompleteProcessingRequestUseCase {
         input.eventId,
         updated.processingRequestId,
       );
+      return updated;
     });
-
-    return updated;
   }
 }

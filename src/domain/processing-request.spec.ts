@@ -4,6 +4,7 @@ import {
   completeProcessingRequest,
   failProcessingRequest,
   isFailureCode,
+  isUnchanged,
   startProcessingRequest,
   createProcessingRequest,
 } from './processing-request';
@@ -167,23 +168,67 @@ describe('ProcessingRequest', () => {
       expect(request.status).toBe(ProcessingRequestStatus.RECEIVED);
     });
 
-    it('rejects a request that already started, so a replay creates no second start', () => {
+    it('leaves a request that already started unchanged, so a replay creates no second start', () => {
       const request = startProcessingRequest(queued());
 
-      expect(() => startProcessingRequest(request)).toThrow(
-        'Cannot start request in PROCESSING status',
-      );
-      expect(request.status).toBe(ProcessingRequestStatus.PROCESSING);
+      const replayed = startProcessingRequest(request);
+
+      expect(isUnchanged(request, replayed)).toBe(true);
+      expect(replayed.status).toBe(ProcessingRequestStatus.PROCESSING);
     });
 
-    it('rejects a terminal request', () => {
-      const completed = completeProcessingRequest(
-        startProcessingRequest(queued()),
-        'zips/output.zip',
-      );
+    it('leaves a completed request unchanged when its start arrives late', () => {
+      const completed = completeProcessingRequest(queued(), 'zips/output.zip');
 
-      expect(() => startProcessingRequest(completed)).toThrow(
-        'Cannot start request in COMPLETED status',
+      const late = startProcessingRequest(completed);
+
+      expect(isUnchanged(completed, late)).toBe(true);
+      expect(late.status).toBe(ProcessingRequestStatus.COMPLETED);
+    });
+
+    it('leaves a failed request unchanged when its start arrives late', () => {
+      const failed = failProcessingRequest(queued(), 'PROCESSAMENTO_FALHOU');
+
+      const late = startProcessingRequest(failed);
+
+      expect(isUnchanged(failed, late)).toBe(true);
+      expect(late.status).toBe(ProcessingRequestStatus.FAILED);
+    });
+  });
+
+  describe('completeProcessingRequest out of order', () => {
+    it('completes a QUEUED request whose start has not been handled yet', () => {
+      const request = queued();
+
+      const completed = completeProcessingRequest(request, 'zips/out.zip');
+
+      expect(completed.status).toBe(ProcessingRequestStatus.COMPLETED);
+      expect(completed.zipStorageKey).toBe('zips/out.zip');
+      expect(completed.attemptId).toBe(request.attemptId);
+    });
+
+    it('leaves a request completed with the same archive unchanged', () => {
+      const completed = completeProcessingRequest(queued(), 'zips/out.zip');
+
+      const again = completeProcessingRequest(completed, 'zips/out.zip');
+
+      expect(isUnchanged(completed, again)).toBe(true);
+    });
+
+    it('rejects a second completion that names a different archive', () => {
+      const completed = completeProcessingRequest(queued(), 'zips/out.zip');
+
+      expect(() =>
+        completeProcessingRequest(completed, 'zips/other.zip'),
+      ).toThrow('Cannot complete request in COMPLETED status');
+      expect(completed.zipStorageKey).toBe('zips/out.zip');
+    });
+
+    it('rejects completing a failed request', () => {
+      const failed = failProcessingRequest(queued(), 'PROCESSAMENTO_FALHOU');
+
+      expect(() => completeProcessingRequest(failed, 'zips/out.zip')).toThrow(
+        'Cannot complete request in FAILED status',
       );
     });
   });
@@ -270,14 +315,5 @@ describe('ProcessingRequest', () => {
 
   it('creates a request with no failure code', () => {
     expect(received().failureCode).toBeUndefined();
-  });
-
-  it('rejects completion from QUEUED, because a completion without a start means a lost ProcessingStarted', () => {
-    const request = queued();
-
-    expect(() => completeProcessingRequest(request, 'zips/out.zip')).toThrow(
-      'Cannot complete request in QUEUED status',
-    );
-    expect(request.status).toBe(ProcessingRequestStatus.QUEUED);
   });
 });

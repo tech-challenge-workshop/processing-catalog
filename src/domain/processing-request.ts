@@ -86,20 +86,48 @@ export function acceptProcessingRequest(
   };
 }
 
+/**
+ * Whether a transition changed anything. The lifecycle functions return the
+ * **same object** when an event restates what is already true, so callers
+ * can record the event as seen without writing a state change or publishing.
+ */
+export function isUnchanged(
+  before: ProcessingRequest,
+  after: ProcessingRequest,
+): boolean {
+  return before === after;
+}
+
+const COMPLETABLE_STATUSES: readonly ProcessingRequestStatus[] = [
+  ProcessingRequestStatus.QUEUED,
+  ProcessingRequestStatus.PROCESSING,
+];
+
 export function completeProcessingRequest(
   request: ProcessingRequest,
   zipStorageKey: string,
 ): ProcessingRequest {
-  if (request.status !== ProcessingRequestStatus.PROCESSING) {
-    // A completion that never started means a lost ProcessingStarted, not a
-    // valid path: PROCESSING would otherwise be a decorative state.
+  if (!zipStorageKey || zipStorageKey.trim().length === 0) {
+    throw new ProcessingRequestDomainError('zipStorageKey is required');
+  }
+  if (
+    request.status === ProcessingRequestStatus.COMPLETED &&
+    request.zipStorageKey === zipStorageKey
+  ) {
+    // The same completion reported again - a redelivery the eventId did not
+    // catch. It states what is already true, so it changes nothing.
+    return request;
+  }
+  if (!COMPLETABLE_STATUSES.includes(request.status)) {
     throw new ProcessingRequestDomainError(
       `Cannot complete request in ${request.status} status`,
     );
   }
-  if (!zipStorageKey || zipStorageKey.trim().length === 0) {
-    throw new ProcessingRequestDomainError('zipStorageKey is required');
-  }
+  // QUEUED is accepted because ProcessingStarted and ProcessingCompleted
+  // travel on different queues: the completion can be handled before the
+  // start. The Worker publishes the start first, so a completion is proof
+  // that processing began - refusing it would dead-letter the only event that
+  // carries the archive key and leave the request in PROCESSING forever.
 
   const now = new Date();
   return {
@@ -113,10 +141,18 @@ export function completeProcessingRequest(
 export function startProcessingRequest(
   request: ProcessingRequest,
 ): ProcessingRequest {
-  if (request.status !== ProcessingRequestStatus.QUEUED) {
+  if (request.status === ProcessingRequestStatus.RECEIVED) {
+    // Nothing can start before the video was accepted: the Worker only sees
+    // the job once the acceptance has committed and been published.
     throw new ProcessingRequestDomainError(
       `Cannot start request in ${request.status} status`,
     );
+  }
+  if (request.status !== ProcessingRequestStatus.QUEUED) {
+    // A start that arrives after the request already moved on - overtaken by
+    // its own completion or failure, or repeated. It is stale, not wrong:
+    // applying it would move a finished request backwards.
+    return request;
   }
 
   const now = new Date();

@@ -200,10 +200,15 @@ describeIfDatabase('durability', () => {
   }, 30_000);
 
   it('writes nothing anywhere when the transition is rejected', async () => {
-    const id = await aQueuedRequest();
+    const request = createProcessingRequest({
+      ownerUserId: 'user-' + randomUUID(),
+      sourceStorageKey: 'videos/input.mp4',
+    });
+    await repository.save(request);
+    const id = request.processingRequestId;
     const eventId = randomUUID();
 
-    // COMPLETED is reachable only from PROCESSING, and this request is QUEUED.
+    // Nothing can complete before the video was accepted.
     await expect(
       new CompleteProcessingRequestUseCase(repository, unitOfWork).execute({
         eventId,
@@ -211,10 +216,10 @@ describeIfDatabase('durability', () => {
         zipStorageKey: 'zips/output.zip',
         occurredAt: new Date().toISOString(),
       }),
-    ).rejects.toThrow('Cannot complete request in QUEUED status');
+    ).rejects.toThrow('Cannot complete request in RECEIVED status');
 
     const stored = await repository.findByProcessingRequestId(id);
-    expect(stored!.status).toBe(ProcessingRequestStatus.QUEUED);
+    expect(stored!.status).toBe(ProcessingRequestStatus.RECEIVED);
     expect(await repository.hasEventBeenProcessed(eventId)).toBe(false);
 
     const rows: { n: number }[] = await dataSource.query(
