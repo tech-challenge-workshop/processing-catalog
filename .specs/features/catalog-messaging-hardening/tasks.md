@@ -198,14 +198,16 @@ T9 -> T10
 
 **Done when**:
 
-- [ ] `VideoRejected` for a `QUEUED` request is nacked without requeue, and the request stays `QUEUED`. The same holds for `PROCESSING`
-- [ ] `ProcessingFailed` for a `RECEIVED` request is nacked without requeue, and the request stays `RECEIVED`
-- [ ] The valid paths are unchanged: rejection from `RECEIVED`, and failure from `QUEUED` or `PROCESSING`
-- [ ] Existing tests that failed a `RECEIVED` request through `failProcessingRequest` are listed and moved to the rejection path, with no assertion weakened
-- [ ] Full gate passes
+- [x] `VideoRejected` for a `QUEUED` request is nacked without requeue, and the request stays `QUEUED`. The same holds for `PROCESSING`
+- [x] `ProcessingFailed` for a `RECEIVED` request is nacked without requeue, and the request stays `RECEIVED`
+- [x] The valid paths are unchanged: rejection from `RECEIVED`, and failure from `QUEUED` or `PROCESSING`
+- [x] Existing tests that failed a `RECEIVED` request through `failProcessingRequest` are listed and moved to the rejection path, with no assertion weakened
+- [x] Full gate passes
 
 **Tests**: unit + integration
 **Gate**: full
+
+**Status**: ✅ Complete. `FAILABLE_STATUSES` is now QUEUED and PROCESSING; the use case picks `rejectProcessingRequest` for `origin: 'validation'` and `failProcessingRequest` for `'processing'`. New tests (seen red first): domain, `failProcessingRequest` refuses RECEIVED; use case, a validation rejection for QUEUED/PROCESSING and a processing failure for RECEIVED change nothing (state, code, outbox, processed record), and QUEUED fails on `processing`; consumers, the origin (and `attemptId`) handed to the use case, and the nack without requeue driven through the real channel callback for each invalid case, plus the ack for a valid rejection; PostgreSQL (`test/lifecycle-ordering.e2e-spec.ts`), both invalid transitions leave the row, the outbox and the processed record untouched. **Moved tests** (assertions unchanged): `processing-request.spec.ts` "fails a RECEIVED request and records the code" now calls `rejectProcessingRequest`; in `fail-processing-request.use-case.spec.ts` the seven tests on a RECEIVED request pass `origin: 'validation'` (the "already terminal" test's second call passes `origin: 'processing'`, which keeps its `Cannot fail request in FAILED status` message), and the two PROCESSING tests pass `origin: 'processing'` with the attempt. Negatives: the use case ignoring the origin → 14 red; VideoRejected passing `processing` → 6 red; ProcessingFailed passing `validation` → 5 red; RECEIVED back in `FAILABLE_STATUSES` → 3 red. Full gate: 213 unit (201 + 12), 154 e2e (152 + 2), 0 skipped.
 
 ---
 

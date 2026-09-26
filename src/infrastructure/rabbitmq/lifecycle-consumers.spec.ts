@@ -48,6 +48,51 @@ describe('lifecycle consumers', () => {
     });
   };
 
+  /**
+   * Delivers one message through the consumer's real channel callback and
+   * waits until it is settled, so a test sees the ack or nack the broker
+   * would receive.
+   */
+  const deliver = async (
+    make: (connection: RabbitMQConnection) => {
+      onModuleInit(): Promise<void>;
+    },
+    body: unknown,
+  ) => {
+    let handler: ((message: unknown) => void) | undefined;
+    const channel = {
+      consume: jest.fn((_queue: string, h: (message: unknown) => void) => {
+        handler = h;
+        return Promise.resolve();
+      }),
+      ack: jest.fn(),
+      nack: jest.fn(),
+    };
+    await make({
+      getConsumeChannel: () => channel,
+    } as unknown as RabbitMQConnection).onModuleInit();
+    const message = { content: Buffer.from(JSON.stringify(body)) };
+    handler!(message);
+    for (
+      let i = 0;
+      i < 100 &&
+      channel.ack.mock.calls.length + channel.nack.mock.calls.length === 0;
+      i++
+    ) {
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    return { channel, message };
+  };
+
+  const processing = async () => {
+    const request = await queued();
+    await repository.update(startProcessingRequest(request));
+    return request;
+  };
+
+  const statusOf = async (id: string) =>
+    (await repository.findByProcessingRequestId(id))?.status;
+
   describe('VideoRejectedConsumer', () => {
     const consumer = () =>
       new VideoRejectedConsumer(
@@ -112,6 +157,83 @@ describe('lifecycle consumers', () => {
           }),
         ),
       ).rejects.toThrow('Invalid VideoRejected payload');
+    });
+
+    it('asks for the validation rejection', async () => {
+      const useCase = new FailProcessingRequestUseCase(repository, unitOfWork);
+      const execute = jest.spyOn(useCase, 'execute');
+      const request = await received();
+
+      await new VideoRejectedConsumer(connection, useCase).handleMessage(
+        JSON.stringify({
+          eventId: 'rejected-1',
+          processingRequestId: request.processingRequestId,
+          failureCode: 'FORMATO_INVALIDO',
+          occurredAt: '2026-09-20T00:00:00Z',
+        }),
+      );
+
+      expect(execute).toHaveBeenCalledWith({
+        eventId: 'rejected-1',
+        origin: 'validation',
+        processingRequestId: request.processingRequestId,
+        failureCode: 'FORMATO_INVALIDO',
+        occurredAt: '2026-09-20T00:00:00Z',
+      });
+    });
+
+    it.each<[string, () => Promise<{ processingRequestId: string }>]>([
+      ['QUEUED', () => queued()],
+      ['PROCESSING', () => processing()],
+    ])(
+      'dead-letters a rejection for a %s request and keeps its state',
+      async (status, make) => {
+        const request = await make();
+        const before = outbox.recordedTerminalEvents.length;
+
+        const { channel, message } = await deliver(
+          (conn) =>
+            new VideoRejectedConsumer(
+              conn,
+              new FailProcessingRequestUseCase(repository, unitOfWork),
+            ),
+          {
+            eventId: 'rejected-late',
+            processingRequestId: request.processingRequestId,
+            failureCode: 'FORMATO_INVALIDO',
+            occurredAt: new Date().toISOString(),
+          },
+        );
+
+        expect(channel.nack).toHaveBeenCalledWith(message, false, false);
+        expect(channel.ack).not.toHaveBeenCalled();
+        expect(await statusOf(request.processingRequestId)).toBe(status);
+        expect(outbox.recordedTerminalEvents).toHaveLength(before);
+      },
+    );
+
+    it('acks a rejection for a RECEIVED request', async () => {
+      const request = await received();
+
+      const { channel, message } = await deliver(
+        (conn) =>
+          new VideoRejectedConsumer(
+            conn,
+            new FailProcessingRequestUseCase(repository, unitOfWork),
+          ),
+        {
+          eventId: 'rejected-1',
+          processingRequestId: request.processingRequestId,
+          failureCode: 'FORMATO_INVALIDO',
+          occurredAt: new Date().toISOString(),
+        },
+      );
+
+      expect(channel.ack).toHaveBeenCalledWith(message);
+      expect(channel.nack).not.toHaveBeenCalled();
+      expect(await statusOf(request.processingRequestId)).toBe(
+        ProcessingRequestStatus.FAILED,
+      );
     });
 
     it('rejects a payload with no processingRequestId', async () => {
@@ -231,6 +353,78 @@ describe('lifecycle consumers', () => {
       ).rejects.toThrow('outbox write failed');
 
       expect(await repository.hasEventBeenProcessed('failed-1')).toBe(false);
+    });
+
+    it('asks for the processing failure of the reported attempt', async () => {
+      const useCase = new FailProcessingRequestUseCase(repository, unitOfWork);
+      const execute = jest.spyOn(useCase, 'execute');
+      const request = await processing();
+
+      await new ProcessingFailedConsumer(connection, useCase).handleMessage(
+        JSON.stringify({
+          eventId: 'failed-1',
+          processingRequestId: request.processingRequestId,
+          attemptId: request.attemptId,
+          failureCode: 'PROCESSAMENTO_FALHOU',
+          occurredAt: '2026-09-20T00:00:00Z',
+        }),
+      );
+
+      expect(execute).toHaveBeenCalledWith({
+        eventId: 'failed-1',
+        origin: 'processing',
+        attemptId: request.attemptId,
+        processingRequestId: request.processingRequestId,
+        failureCode: 'PROCESSAMENTO_FALHOU',
+        occurredAt: '2026-09-20T00:00:00Z',
+      });
+    });
+
+    it('moves a queued request to FAILED', async () => {
+      const request = await queued();
+
+      await consumer().handleMessage(
+        JSON.stringify({
+          eventId: 'failed-1',
+          processingRequestId: request.processingRequestId,
+          attemptId: request.attemptId,
+          failureCode: 'DURACAO_EXCEDIDA',
+          occurredAt: new Date().toISOString(),
+        }),
+      );
+
+      const stored = await repository.findByProcessingRequestId(
+        request.processingRequestId,
+      );
+      expect(stored?.status).toBe(ProcessingRequestStatus.FAILED);
+      expect(stored?.failureCode).toBe('DURACAO_EXCEDIDA');
+    });
+
+    it('dead-letters a failure for a RECEIVED request and keeps its state', async () => {
+      const request = await received();
+      const before = outbox.recordedTerminalEvents.length;
+
+      const { channel, message } = await deliver(
+        (conn) =>
+          new ProcessingFailedConsumer(
+            conn,
+            new FailProcessingRequestUseCase(repository, unitOfWork),
+          ),
+        {
+          eventId: 'failed-early',
+          processingRequestId: request.processingRequestId,
+          attemptId: randomUUID(),
+          failureCode: 'PROCESSAMENTO_FALHOU',
+          occurredAt: new Date().toISOString(),
+        },
+      );
+
+      expect(channel.nack).toHaveBeenCalledWith(message, false, false);
+      expect(channel.ack).not.toHaveBeenCalled();
+      expect(await statusOf(request.processingRequestId)).toBe(
+        ProcessingRequestStatus.RECEIVED,
+      );
+      expect(outbox.recordedTerminalEvents).toHaveLength(before);
     });
 
     it('rejects a malformed payload', async () => {

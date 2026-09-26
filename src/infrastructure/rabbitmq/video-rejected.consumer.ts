@@ -33,6 +33,7 @@ export class VideoRejectedConsumer implements OnModuleInit {
     const parsed = this.parse(JSON.parse(content));
     await this.useCase.execute({
       eventId: parsed.eventId,
+      origin: 'validation',
       processingRequestId: parsed.processingRequestId,
       failureCode: parsed.failureCode,
       occurredAt: parsed.occurredAt,

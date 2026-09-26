@@ -167,8 +167,12 @@ export function startProcessingRequest(
   };
 }
 
+/**
+ * A processing failure belongs to an attempt, so only a request that has one
+ * can fail. A RECEIVED request has none: a refusal before acceptance is a
+ * rejection (`rejectProcessingRequest`).
+ */
 const FAILABLE_STATUSES: readonly ProcessingRequestStatus[] = [
-  ProcessingRequestStatus.RECEIVED,
   ProcessingRequestStatus.QUEUED,
   ProcessingRequestStatus.PROCESSING,
 ];

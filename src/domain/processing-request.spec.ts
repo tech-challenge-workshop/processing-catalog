@@ -252,14 +252,19 @@ describe('ProcessingRequest', () => {
   });
 
   describe('failProcessingRequest', () => {
-    it('fails a RECEIVED request and records the code', () => {
+    it('refuses a RECEIVED request: a failure needs an attempt, a refusal before one is a rejection', () => {
       const request = received();
 
-      const failed = failProcessingRequest(request, 'FORMATO_INVALIDO');
-
-      expect(failed.status).toBe(ProcessingRequestStatus.FAILED);
-      expect(failed.failureCode).toBe('FORMATO_INVALIDO');
+      expect(() => failProcessingRequest(request, 'FORMATO_INVALIDO')).toThrow(
+        new ProcessingRequestDomainError(
+          'Cannot fail request in RECEIVED status',
+        ),
+      );
+      expect(() =>
+        failProcessingRequest(request, 'PROCESSAMENTO_FALHOU'),
+      ).toThrow(ProcessingRequestDomainError);
       expect(request.status).toBe(ProcessingRequestStatus.RECEIVED);
+      expect(request.failureCode).toBeUndefined();
     });
 
     it('fails a QUEUED request and records the code', () => {
@@ -326,6 +331,18 @@ describe('ProcessingRequest', () => {
       expect(rejected.updatedAt.getTime()).toBeGreaterThanOrEqual(
         request.updatedAt.getTime(),
       );
+      expect(request.status).toBe(ProcessingRequestStatus.RECEIVED);
+    });
+
+    // Moved from failProcessingRequest in T5: a RECEIVED request now fails
+    // through the rejection path. Assertions unchanged.
+    it('fails a RECEIVED request and records the code', () => {
+      const request = received();
+
+      const failed = rejectProcessingRequest(request, 'FORMATO_INVALIDO');
+
+      expect(failed.status).toBe(ProcessingRequestStatus.FAILED);
+      expect(failed.failureCode).toBe('FORMATO_INVALIDO');
       expect(request.status).toBe(ProcessingRequestStatus.RECEIVED);
     });
 

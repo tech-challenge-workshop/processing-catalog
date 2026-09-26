@@ -4,6 +4,7 @@ import {
 } from '../infrastructure/in-memory-unit-of-work';
 import { randomUUID } from 'crypto';
 import {
+  ProcessingRequestDomainError,
   ProcessingRequestStatus,
   startProcessingRequest,
 } from '../domain/processing-request';
@@ -51,6 +52,7 @@ describe('FailProcessingRequestUseCase', () => {
 
     const updated = await useCase.execute({
       eventId: 'rejected-1',
+      origin: 'validation',
       processingRequestId: request.processingRequestId,
       failureCode: 'FORMATO_INVALIDO',
       occurredAt: '2026-09-20T00:00:00Z',
@@ -66,6 +68,7 @@ describe('FailProcessingRequestUseCase', () => {
 
     await useCase.execute({
       eventId: 'rejected-1',
+      origin: 'validation',
       processingRequestId: request.processingRequestId,
       failureCode: 'DURACAO_EXCEDIDA',
       occurredAt: '2026-09-20T00:00:00Z',
@@ -84,6 +87,7 @@ describe('FailProcessingRequestUseCase', () => {
 
     await useCase.execute({
       eventId: 'rejected-1',
+      origin: 'validation',
       processingRequestId: request.processingRequestId,
       failureCode: 'FORMATO_INVALIDO',
       occurredAt: new Date().toISOString(),
@@ -98,6 +102,8 @@ describe('FailProcessingRequestUseCase', () => {
 
     await useCase.execute({
       eventId: 'failed-1',
+      origin: 'processing',
+      attemptId: request.attemptId,
       processingRequestId: request.processingRequestId,
       failureCode: 'PROCESSAMENTO_FALHOU',
       occurredAt: new Date().toISOString(),
@@ -114,6 +120,8 @@ describe('FailProcessingRequestUseCase', () => {
 
     const updated = await useCase.execute({
       eventId: 'failed-1',
+      origin: 'processing',
+      attemptId: request.attemptId,
       processingRequestId: request.processingRequestId,
       failureCode: 'PROCESSAMENTO_FALHOU',
       occurredAt: new Date().toISOString(),
@@ -126,6 +134,7 @@ describe('FailProcessingRequestUseCase', () => {
     const request = await received();
     const input = {
       eventId: 'rejected-1',
+      origin: 'validation' as const,
       processingRequestId: request.processingRequestId,
       failureCode: 'FORMATO_INVALIDO' as const,
       occurredAt: new Date().toISOString(),
@@ -144,6 +153,7 @@ describe('FailProcessingRequestUseCase', () => {
     await expect(
       useCase.execute({
         eventId: 'rejected-1',
+        origin: 'validation',
         processingRequestId: request.processingRequestId,
         failureCode: 'INVENTADO' as never,
         occurredAt: new Date().toISOString(),
@@ -160,6 +170,7 @@ describe('FailProcessingRequestUseCase', () => {
     const request = await received();
     await useCase.execute({
       eventId: 'rejected-1',
+      origin: 'validation',
       processingRequestId: request.processingRequestId,
       failureCode: 'FORMATO_INVALIDO',
       occurredAt: new Date().toISOString(),
@@ -168,6 +179,7 @@ describe('FailProcessingRequestUseCase', () => {
     await expect(
       useCase.execute({
         eventId: 'rejected-2',
+        origin: 'processing',
         processingRequestId: request.processingRequestId,
         failureCode: 'PROCESSAMENTO_FALHOU',
         occurredAt: new Date().toISOString(),
@@ -189,6 +201,7 @@ describe('FailProcessingRequestUseCase', () => {
     await expect(
       useCase.execute({
         eventId: 'rejected-1',
+        origin: 'validation',
         processingRequestId: request.processingRequestId,
         failureCode: 'FORMATO_INVALIDO',
         occurredAt: new Date().toISOString(),
@@ -196,5 +209,99 @@ describe('FailProcessingRequestUseCase', () => {
     ).rejects.toThrow('outbox write failed');
 
     expect(await repository.hasEventBeenProcessed('rejected-1')).toBe(false);
+  });
+
+  describe('each origin takes its own transition', () => {
+    const stored = async (id: string) =>
+      repository.findByProcessingRequestId(id);
+
+    it('fails a QUEUED request on a processing failure of its attempt', async () => {
+      const request = await queued();
+
+      const updated = await useCase.execute({
+        eventId: 'failed-1',
+        origin: 'processing',
+        attemptId: request.attemptId,
+        processingRequestId: request.processingRequestId,
+        failureCode: 'PROCESSAMENTO_FALHOU',
+        occurredAt: new Date().toISOString(),
+      });
+
+      expect(updated.status).toBe(ProcessingRequestStatus.FAILED);
+      expect((await stored(request.processingRequestId))?.failureCode).toBe(
+        'PROCESSAMENTO_FALHOU',
+      );
+      expect(outbox.recordedTerminalEvents.at(-1)!.attemptId).toBe(
+        request.attemptId,
+      );
+    });
+
+    it.each<[string, () => Promise<{ processingRequestId: string }>]>([
+      ['QUEUED', () => queued()],
+      [
+        'PROCESSING',
+        async () => {
+          const request = await queued();
+          await repository.update(startProcessingRequest(request));
+          return request;
+        },
+      ],
+    ])(
+      'refuses a validation rejection for a %s request and changes nothing',
+      async (status, make) => {
+        const request = await make();
+        const before = outbox.recordedTerminalEvents.length;
+
+        await expect(
+          useCase.execute({
+            eventId: 'rejected-late',
+            origin: 'validation',
+            processingRequestId: request.processingRequestId,
+            failureCode: 'FORMATO_INVALIDO',
+            occurredAt: new Date().toISOString(),
+          }),
+        ).rejects.toThrow(
+          new ProcessingRequestDomainError(
+            `Cannot reject request in ${status} status`,
+          ),
+        );
+
+        const after = await stored(request.processingRequestId);
+        expect(after?.status).toBe(status);
+        expect(after?.failureCode).toBeUndefined();
+        expect(outbox.recordedTerminalEvents).toHaveLength(before);
+        expect(await repository.hasEventBeenProcessed('rejected-late')).toBe(
+          false,
+        );
+      },
+    );
+
+    it('refuses a processing failure for a RECEIVED request and changes nothing', async () => {
+      const request = await received();
+      const before = outbox.recordedTerminalEvents.length;
+
+      await expect(
+        useCase.execute({
+          eventId: 'failed-early',
+          origin: 'processing',
+          attemptId: randomUUID(),
+          processingRequestId: request.processingRequestId,
+          failureCode: 'PROCESSAMENTO_FALHOU',
+          occurredAt: new Date().toISOString(),
+        }),
+      ).rejects.toThrow(
+        new ProcessingRequestDomainError(
+          'Cannot fail request in RECEIVED status',
+        ),
+      );
+
+      const after = await stored(request.processingRequestId);
+      expect(after?.status).toBe(ProcessingRequestStatus.RECEIVED);
+      expect(after?.failureCode).toBeUndefined();
+      expect(outbox.recordedTerminalEvents).toHaveLength(before);
+      expect(await repository.hasEventBeenProcessed('failed-early')).toBe(
+        false,
+      );
+    });
   });
 });

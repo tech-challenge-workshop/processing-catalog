@@ -6,14 +6,24 @@ import {
   ProcessingRequestDomainError,
   failProcessingRequest,
   isFailureCode,
+  rejectProcessingRequest,
 } from '../domain/processing-request';
 import { failureReasonFor } from '../domain/failure-reason';
 import { EVENT_ROUTES } from './event-routes';
 import { UNIT_OF_WORK, type UnitOfWork } from './unit-of-work';
 import type { ProcessingRequestRepository } from '../domain/processing-request.repository';
 
+/**
+ * Which event reported the failure: `validation` is VideoRejected, a refusal
+ * before any attempt; `processing` is ProcessingFailed, the end of an attempt.
+ */
+export type FailureOrigin = 'validation' | 'processing';
+
 export interface FailProcessingRequestInput {
   eventId: string;
+  origin: FailureOrigin;
+  /** The attempt a processing failure belongs to. */
+  attemptId?: string;
   processingRequestId: string;
   failureCode: FailureCode;
   occurredAt: string;
@@ -24,9 +34,9 @@ export interface FailProcessingRequestInput {
  * mapped reason.
  *
  * Serves both failing paths - a video refused by validation and an attempt
- * that could not be completed - because they are the same transition reported
- * by two different events. Which source states are permitted is the domain's
- * decision, not this use case's, so two classes would differ in name only.
+ * that could not be completed - because they end in the same state and the
+ * same terminal event. The origin picks the domain transition, and the domain
+ * decides which source states each one permits.
  */
 export class FailProcessingRequestUseCase {
   constructor(
@@ -76,7 +86,10 @@ export class FailProcessingRequestUseCase {
         return request;
       }
 
-      const updated = failProcessingRequest(request, input.failureCode);
+      const updated =
+        input.origin === 'validation'
+          ? rejectProcessingRequest(request, input.failureCode)
+          : failProcessingRequest(request, input.failureCode);
 
       await ctx.requests.update(updated);
       await ctx.outbox.add(
