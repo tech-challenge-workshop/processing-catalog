@@ -132,12 +132,14 @@ T5
 
 **Done when**:
 
-- [ ] Against PostgreSQL: the lookup returns the owner's request and nothing for another owner
-- [ ] A duplicate source raises `DuplicateSourceError`; a duplicate key still raises `DuplicateIdempotencyKeyError`; a duplicate primary key still passes through unchanged
-- [ ] Build gate passes (typecheck green again)
+- [x] Against PostgreSQL: the lookup returns the owner's request and nothing for another owner
+- [x] A duplicate source raises `DuplicateSourceError`; a duplicate key still raises `DuplicateIdempotencyKeyError`; a duplicate primary key still passes through unchanged
+- [x] Build gate passes (typecheck green again)
 
 **Tests**: integration
 **Gate**: build
+
+**Status**: ✅ Complete. Build gate green on a fresh container: lint, typecheck, unit 175, e2e 115 → 118 with 0 skipped, build. `tsc` is green again. `isIdempotencyViolation` became `violatedUniqueIndex`, which returns the constraint of a `23505`; `save` maps `uq_processing_request_owner_idempotency` and `uq_processing_request_owner_source` each to its own error and rethrows anything else. The new key-only test takes the key under another source, so it proves the key mapping without relying on which of two violated indexes PostgreSQL reports. The existing primary-key test in `test/persistence.e2e-spec.ts` gained one assertion, `not.toBeInstanceOf(DuplicateSourceError)`; nothing was removed.
 
 ---
 

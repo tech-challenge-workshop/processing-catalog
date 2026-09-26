@@ -6,7 +6,10 @@ import {
   createProcessingRequest,
   failProcessingRequest,
 } from '../src/domain/processing-request';
-import { DuplicateIdempotencyKeyError } from '../src/domain/processing-request.repository';
+import {
+  DuplicateIdempotencyKeyError,
+  DuplicateSourceError,
+} from '../src/domain/processing-request.repository';
 import { createDataSource } from '../src/infrastructure/persistence/data-source';
 import { TypeOrmProcessingRequestRepository } from '../src/infrastructure/persistence/typeorm-processing-request.repository';
 
@@ -221,9 +224,84 @@ describeIfDatabase('TypeOrmProcessingRequestRepository', () => {
       );
 
       expect(error).not.toBeInstanceOf(DuplicateIdempotencyKeyError);
+      expect(error).not.toBeInstanceOf(DuplicateSourceError);
       expect(error).toMatchObject({
         driverError: { code: '23505', constraint: 'processing_request_pkey' },
       });
+    });
+  });
+
+  describe('sources', () => {
+    const sourced = (ownerUserId: string, sourceStorageKey: string) =>
+      createProcessingRequest({
+        ownerUserId,
+        sourceStorageKey,
+        idempotencyKey: 'key-' + randomUUID(),
+      });
+
+    const countFor = async (ownerUserId: string, source: string) => {
+      const rows: { n: number }[] = await dataSource.query(
+        `SELECT count(*)::int AS n FROM processing_request
+          WHERE owner_user_id = $1 AND source_storage_key = $2`,
+        [ownerUserId, source],
+      );
+      return rows[0].n;
+    };
+
+    it("finds the owner's request by its source, and not another owner's", async () => {
+      const owner = 'user-' + randomUUID();
+      const source = `sources/${owner}/a.mp4`;
+      const request = sourced(owner, source);
+      await repository.save(request);
+
+      const found = await repository.findByOwnerAndSource(owner, source);
+      expect(found!.processingRequestId).toBe(request.processingRequestId);
+      expect(found!.sourceStorageKey).toBe(source);
+      await expect(
+        repository.findByOwnerAndSource('user-' + randomUUID(), source),
+      ).resolves.toBeUndefined();
+      await expect(
+        repository.findByOwnerAndSource(owner, `sources/${owner}/b.mp4`),
+      ).resolves.toBeUndefined();
+    });
+
+    it('raises DuplicateSourceError on a second insert with the same owner and source under another key', async () => {
+      const owner = 'user-' + randomUUID();
+      const source = `sources/${owner}/a.mp4`;
+      await repository.save(sourced(owner, source));
+
+      await expect(
+        repository.save(sourced(owner, source)),
+      ).rejects.toBeInstanceOf(DuplicateSourceError);
+      expect(await countFor(owner, source)).toBe(1);
+    });
+
+    it('still raises DuplicateIdempotencyKeyError when only the key is taken', async () => {
+      const owner = 'user-' + randomUUID();
+      const key = 'key-' + randomUUID();
+      await repository.save(
+        createProcessingRequest({
+          ownerUserId: owner,
+          sourceStorageKey: `sources/${owner}/a.mp4`,
+          idempotencyKey: key,
+        }),
+      );
+
+      const error: unknown = await repository
+        .save(
+          createProcessingRequest({
+            ownerUserId: owner,
+            sourceStorageKey: `sources/${owner}/b.mp4`,
+            idempotencyKey: key,
+          }),
+        )
+        .then(
+          () => undefined,
+          (e: unknown) => e,
+        );
+
+      expect(error).toBeInstanceOf(DuplicateIdempotencyKeyError);
+      expect(error).not.toBeInstanceOf(DuplicateSourceError);
     });
   });
 
