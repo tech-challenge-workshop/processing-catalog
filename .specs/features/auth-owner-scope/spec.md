@@ -92,10 +92,10 @@ Decisions from the gray-area discussion of 2026-09-26 are in `fiap-x-platform/.s
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| AUTH-10 | P1: One owner's requests, one page at a time | Execute | Implementing |
-| AUTH-11 | P1: One owner's requests, one page at a time | Execute | Implementing |
-| AUTH-12 | P2: One request, for its owner only | Execute | Implementing |
-| AUTH-13 | P1–P2: owner-scoped responses expose no storage keys | Execute | Implementing |
+| AUTH-10 | P1: One owner's requests, one page at a time | Validate | Verified |
+| AUTH-11 | P1: One owner's requests, one page at a time | Validate | Verified |
+| AUTH-12 | P2: One request, for its owner only | Validate | Verified |
+| AUTH-13 | P1–P2: owner-scoped responses expose no storage keys | Validate | Verified |
 
 **ID format:** `[CATEGORY]-[NUMBER]`
 
