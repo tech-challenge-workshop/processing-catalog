@@ -151,21 +151,21 @@ Decisions of 2026-09-26 are in `context.md` beside this spec.
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| MSG-01 | P1: One publication per row across replicas (V5) | Design | In Design |
-| MSG-02 | P1: Publish timeout; relay keeps retrying (V5) | Design | In Design |
-| MSG-03 | P2: Stale `attemptId` is a no-op (V7) | Design | In Design |
-| MSG-04 | P2: `VideoRejected` only from `RECEIVED` (V7) | Design | In Design |
-| MSG-05 | P2: `ProcessingFailed` never from `RECEIVED` (V7) | Design | In Design |
-| MSG-06 | P3: Blank backoff is the default (V13) | Design | In Design |
-| MSG-07 | P4: e2e suites use `fiapx_e2e` | Design | In Design |
-| MSG-08 | P5: Field length bounds (V38) | Design | In Design |
-| MSG-09 | P5: Spec B test gaps (V39) | Design | In Design |
+| MSG-01 | P1: One publication per row across replicas (V5) | Tasks | In Tasks |
+| MSG-02 | P1: Publish timeout; relay keeps retrying (V5) | Tasks | In Tasks |
+| MSG-03 | P2: Stale `attemptId` is a no-op (V7) | Tasks | In Tasks |
+| MSG-04 | P2: `VideoRejected` only from `RECEIVED` (V7) | Tasks | In Tasks |
+| MSG-05 | P2: `ProcessingFailed` never from `RECEIVED` (V7) | Tasks | In Tasks |
+| MSG-06 | P3: Blank backoff is the default (V13) | Tasks | In Tasks |
+| MSG-07 | P4: e2e suites use `fiapx_e2e` | Tasks | In Tasks |
+| MSG-08 | P5: Field length bounds (V38) | Tasks | In Tasks |
+| MSG-09 | P5: Spec B test gaps (V39) | Tasks | In Tasks |
 
 **ID format:** `[CATEGORY]-[NUMBER]`
 
 **Status values:** Pending → In Design → In Tasks → Implementing → Verified
 
-**Coverage:** 9 total, 0 mapped to tasks, 9 unmapped ⚠️ (mapped in Tasks)
+**Coverage:** 9 total, 9 mapped to tasks, 0 unmapped
 
 ---
 
