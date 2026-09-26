@@ -6,6 +6,7 @@ import {
 } from '../../domain/processing-request';
 import {
   DuplicateIdempotencyKeyError,
+  DuplicateSourceError,
   ProcessingRequestRepository,
 } from '../../domain/processing-request.repository';
 import { ProcessedEventEntity } from './processed-event.entity';
@@ -13,21 +14,22 @@ import { ProcessingRequestEntity } from './processing-request.entity';
 
 const UNIQUE_VIOLATION = '23505';
 const IDEMPOTENCY_INDEX = 'uq_processing_request_owner_idempotency';
+const SOURCE_INDEX = 'uq_processing_request_owner_source';
 
 /**
- * Only a violation of the idempotency index is a lost race. A duplicate
- * primary key or any other constraint is a real error and propagates.
+ * The unique index a failed insert violated, if any. Only a violation of the
+ * idempotency or the source index is a lost race; a duplicate primary key or
+ * any other constraint is a real error and propagates.
  */
-function isIdempotencyViolation(error: unknown): boolean {
+function violatedUniqueIndex(error: unknown): string | undefined {
   if (!(error instanceof QueryFailedError)) {
-    return false;
+    return undefined;
   }
   const driverError = error.driverError as
     { code?: string; constraint?: string } | undefined;
-  return (
-    driverError?.code === UNIQUE_VIOLATION &&
-    driverError.constraint === IDEMPOTENCY_INDEX
-  );
+  return driverError?.code === UNIQUE_VIOLATION
+    ? driverError.constraint
+    : undefined;
 }
 
 function toDomain(row: ProcessingRequestEntity): ProcessingRequest {
@@ -79,12 +81,19 @@ export class TypeOrmProcessingRequestRepository implements ProcessingRequestRepo
     try {
       await this.manager.insert(ProcessingRequestEntity, toRow(request));
     } catch (error) {
-      if (isIdempotencyViolation(error)) {
-        // Inside a transaction, PostgreSQL has already aborted it: the caller
-        // must re-read on a fresh connection, not through this manager.
+      // Inside a transaction, PostgreSQL has already aborted it: the caller
+      // must re-read on a fresh connection, not through this manager.
+      const index = violatedUniqueIndex(error);
+      if (index === IDEMPOTENCY_INDEX) {
         throw new DuplicateIdempotencyKeyError(
           request.ownerUserId,
           request.idempotencyKey!,
+        );
+      }
+      if (index === SOURCE_INDEX) {
+        throw new DuplicateSourceError(
+          request.ownerUserId,
+          request.sourceStorageKey,
         );
       }
       throw error;
@@ -182,6 +191,16 @@ export class TypeOrmProcessingRequestRepository implements ProcessingRequestRepo
   ): Promise<ProcessingRequest | undefined> {
     const row = await this.manager.findOne(ProcessingRequestEntity, {
       where: { ownerUserId, idempotencyKey },
+    });
+    return row ? toDomain(row) : undefined;
+  }
+
+  async findByOwnerAndSource(
+    ownerUserId: string,
+    sourceStorageKey: string,
+  ): Promise<ProcessingRequest | undefined> {
+    const row = await this.manager.findOne(ProcessingRequestEntity, {
+      where: { ownerUserId, sourceStorageKey },
     });
     return row ? toDomain(row) : undefined;
   }
