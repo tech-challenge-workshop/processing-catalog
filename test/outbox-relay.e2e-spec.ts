@@ -1,7 +1,10 @@
 import { randomUUID } from 'crypto';
 import { DataSource } from 'typeorm';
 import { createDataSource } from '../src/infrastructure/persistence/data-source';
-import { OutboxRelay } from '../src/infrastructure/messaging/outbox-relay';
+import {
+  OUTBOX_RELAY_LOCK_KEY,
+  OutboxRelay,
+} from '../src/infrastructure/messaging/outbox-relay';
 import { RabbitMQConnection } from '../src/infrastructure/rabbitmq/rabbitmq.connection';
 
 const describeIfDatabase = process.env.DATABASE_HOST ? describe : describe.skip;
@@ -142,5 +145,220 @@ describeIfDatabase('OutboxRelay', () => {
 
     expect(await relay.pendingCount()).toBe(2);
     expect(await relay.oldestPendingAgeSeconds()).toBeGreaterThanOrEqual(0);
+  });
+});
+
+interface Ordered {
+  eventId: string;
+  requestId: string;
+  seq: number;
+}
+
+/** Records every publish; a short pause lets two drains overlap. */
+class CountingConnection {
+  readonly sent: Ordered[] = [];
+
+  async sendToQueue(
+    _queue: string,
+    _pattern: string,
+    payload: unknown,
+  ): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, 2));
+    this.sent.push(payload as Ordered);
+  }
+}
+
+/** Rejects the Nth publish (1-based), then behaves. */
+class FailingOnNthConnection {
+  readonly sent: Ordered[] = [];
+  private calls = 0;
+
+  constructor(private readonly failOn: number) {}
+
+  sendToQueue(
+    _queue: string,
+    _pattern: string,
+    payload: unknown,
+  ): Promise<void> {
+    this.calls += 1;
+    if (this.calls === this.failOn) {
+      return Promise.reject(new Error('timeout'));
+    }
+    this.sent.push(payload as Ordered);
+    return Promise.resolve();
+  }
+}
+
+describeIfDatabase('OutboxRelay across replicas and failures', () => {
+  let dataSourceA: DataSource;
+  let dataSourceB: DataSource;
+
+  beforeAll(async () => {
+    dataSourceA = createDataSource();
+    await dataSourceA.initialize();
+    await dataSourceA.runMigrations();
+    dataSourceB = createDataSource();
+    await dataSourceB.initialize();
+  }, 30_000);
+
+  afterAll(async () => {
+    await dataSourceA.destroy();
+    await dataSourceB.destroy();
+  }, 30_000);
+
+  beforeEach(async () => {
+    await dataSourceA.query('DELETE FROM outbox');
+  });
+
+  /** Inserts `requests` x `perRequest` rows, interleaved across requests. */
+  const addInterleaved = async (
+    requests: number,
+    perRequest: number,
+  ): Promise<Ordered[]> => {
+    const requestIds = Array.from({ length: requests }, () => randomUUID());
+    const rows: Ordered[] = [];
+    for (let seq = 0; seq < perRequest; seq += 1) {
+      for (const requestId of requestIds) {
+        const row = { eventId: randomUUID(), requestId, seq };
+        await dataSourceA.query(
+          `INSERT INTO outbox (queue, pattern, payload, created_at, published_at)
+           VALUES ('processing.queued', 'Ordered', $1::jsonb, now(), NULL)`,
+          [JSON.stringify(row)],
+        );
+        rows.push(row);
+      }
+    }
+    return rows;
+  };
+
+  const pendingIds = async (): Promise<string[]> => {
+    const rows: { eventId: string }[] = await dataSourceA.query(
+      `SELECT payload->>'eventId' AS "eventId"
+         FROM outbox WHERE published_at IS NULL ORDER BY id`,
+    );
+    return rows.map((r) => r.eventId);
+  };
+
+  it('publishes each row exactly once, in per-request order, when two relays drain together', async () => {
+    const rows = await addInterleaved(10, 10);
+    const publisher = new CountingConnection();
+    const relayA = new OutboxRelay(
+      dataSourceA,
+      publisher as unknown as RabbitMQConnection,
+    );
+    const relayB = new OutboxRelay(
+      dataSourceB,
+      publisher as unknown as RabbitMQConnection,
+    );
+
+    for (
+      let round = 0;
+      round < 20 && (await pendingIds()).length > 0;
+      round++
+    ) {
+      await Promise.all([relayA.drain(), relayB.drain()]);
+    }
+
+    const ids = publisher.sent.map((e) => e.eventId);
+    expect(ids).toHaveLength(100);
+    expect(new Set(ids).size).toBe(100);
+    expect(new Set(ids)).toEqual(new Set(rows.map((r) => r.eventId)));
+    for (const requestId of new Set(rows.map((r) => r.requestId))) {
+      const seqs = publisher.sent
+        .filter((e) => e.requestId === requestId)
+        .map((e) => e.seq);
+      expect(seqs).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    }
+    expect(await pendingIds()).toEqual([]);
+  }, 30_000);
+
+  it('returns 0 and publishes nothing while another replica holds the relay lock', async () => {
+    const [row] = await addInterleaved(1, 1);
+    const publisher = new CountingConnection();
+    const relay = new OutboxRelay(
+      dataSourceA,
+      publisher as unknown as RabbitMQConnection,
+    );
+    const holder = dataSourceB.createQueryRunner();
+    await holder.connect();
+    await holder.startTransaction();
+    try {
+      await holder.query('SELECT pg_advisory_xact_lock($1)', [
+        OUTBOX_RELAY_LOCK_KEY,
+      ]);
+
+      expect(await relay.drain()).toBe(0);
+      expect(publisher.sent).toEqual([]);
+      expect(await pendingIds()).toEqual([row.eventId]);
+    } finally {
+      await holder.rollbackTransaction();
+      await holder.release();
+    }
+  });
+
+  it('keeps the marks made before a failed publish, leaves the rest pending, and a later drain finishes them', async () => {
+    const rows = await addInterleaved(1, 5);
+    const publisher = new FailingOnNthConnection(3);
+    const relay = new OutboxRelay(
+      dataSourceA,
+      publisher as unknown as RabbitMQConnection,
+    );
+
+    await expect(relay.drain()).rejects.toThrow('timeout');
+
+    expect(publisher.sent.map((e) => e.eventId)).toEqual([
+      rows[0].eventId,
+      rows[1].eventId,
+    ]);
+    expect(await pendingIds()).toEqual(rows.slice(2).map((r) => r.eventId));
+
+    expect(await relay.drain()).toBe(3);
+
+    expect(publisher.sent.map((e) => e.eventId)).toEqual(
+      rows.map((r) => r.eventId),
+    );
+    expect(await pendingIds()).toEqual([]);
+  });
+
+  describe('with a broker that never confirms', () => {
+    const previousUrl = process.env.RABBITMQ_URL;
+    const previousTimeout = process.env.OUTBOX_PUBLISH_TIMEOUT_MS;
+    let connection: RabbitMQConnection;
+
+    beforeEach(() => {
+      // Nothing listens here, so the real channel wrapper buffers the publish
+      // and never confirms it; only its timeout can end the wait.
+      process.env.RABBITMQ_URL = 'amqp://127.0.0.1:1';
+      process.env.OUTBOX_PUBLISH_TIMEOUT_MS = '300';
+      connection = new RabbitMQConnection();
+      connection.onModuleInit();
+    });
+
+    afterEach(async () => {
+      await connection.onModuleDestroy();
+      for (const [name, value] of [
+        ['RABBITMQ_URL', previousUrl],
+        ['OUTBOX_PUBLISH_TIMEOUT_MS', previousTimeout],
+      ] as const) {
+        if (value === undefined) {
+          delete process.env[name];
+        } else {
+          process.env[name] = value;
+        }
+      }
+    });
+
+    it('returns within the publish timeout and leaves the row pending', async () => {
+      const [row] = await addInterleaved(1, 1);
+      const relay = new OutboxRelay(dataSourceA, connection);
+
+      const started = Date.now();
+      await expect(relay.drain()).rejects.toThrow('timeout');
+      const elapsed = Date.now() - started;
+
+      expect(elapsed).toBeGreaterThanOrEqual(250);
+      expect(elapsed).toBeLessThan(2_000);
+      expect(await pendingIds()).toEqual([row.eventId]);
+    }, 10_000);
   });
 });

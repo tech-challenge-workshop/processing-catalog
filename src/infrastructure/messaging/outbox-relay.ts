@@ -11,6 +11,20 @@ export interface PendingOutboxRow {
 }
 
 /**
+ * Key of the transaction-scoped advisory lock that lets one relay drain at a
+ * time across every Catalog replica. It is the first 8 bytes of
+ * sha256('catalog.outbox-relay') read as a signed bigint, so it is stable and
+ * unlikely to collide; nothing else in the schema takes advisory locks.
+ *
+ * Holding the lock for the whole drain keeps the global `ORDER BY id`, so a
+ * request's events reach the broker in the order they were recorded, exactly
+ * as with one replica. The cost: the transaction stays open while publishing,
+ * up to one publish timeout per row, but it holds only the lock and the row
+ * marks, and a drain stops at its first failure.
+ */
+export const OUTBOX_RELAY_LOCK_KEY = '-3576818703360397482';
+
+/**
  * The only thing that talks to the broker.
  *
  * Publishes pending rows and marks them sent **after** the broker confirms.
@@ -18,7 +32,7 @@ export interface PendingOutboxRow {
  * which is the loss this slice exists to remove.
  *
  * Delivery is therefore at-least-once: a crash between the confirm and the
- * mark republishes the row. Every consumer already deduplicates by eventId,
+ * commit republishes the row. Every consumer already deduplicates by eventId,
  * so a repeat is absorbed, and losing an event is the worse failure.
  */
 @Injectable()
@@ -28,27 +42,61 @@ export class OutboxRelay {
     private readonly connection: RabbitMQConnection,
   ) {}
 
-  /** Publishes every pending row. Returns how many reached the broker. */
+  /**
+   * Publishes pending rows. Returns how many reached the broker, or 0 when
+   * another replica is draining.
+   *
+   * On the first failed publish (a refusal or a confirm timeout) it stops,
+   * commits the marks made so far, and then rethrows, so confirmed rows are
+   * not republished and the failed row stays pending for the next tick.
+   */
   async drain(batchSize = 50): Promise<number> {
-    const rows: PendingOutboxRow[] = await this.dataSource.query(
-      `SELECT id, queue, pattern, payload, created_at
-         FROM outbox
-        WHERE published_at IS NULL
-        ORDER BY id
-        LIMIT $1`,
-      [batchSize],
-    );
-
-    let published = 0;
-    for (const row of rows) {
-      // Stop at the first failure rather than skipping ahead: events for one
-      // request must reach the broker in the order they were recorded.
-      await this.connection.sendToQueue(row.queue, row.pattern, row.payload);
-      await this.dataSource.query(
-        `UPDATE outbox SET published_at = now() WHERE id = $1`,
-        [row.id],
+    let failed = false;
+    let failure: unknown;
+    const published = await this.dataSource.transaction(async (manager) => {
+      const [{ locked }]: { locked: boolean }[] = await manager.query(
+        `SELECT pg_try_advisory_xact_lock($1) AS locked`,
+        [OUTBOX_RELAY_LOCK_KEY],
       );
-      published += 1;
+      if (!locked) {
+        return 0;
+      }
+
+      const rows: PendingOutboxRow[] = await manager.query(
+        `SELECT id, queue, pattern, payload, created_at
+           FROM outbox
+          WHERE published_at IS NULL
+          ORDER BY id
+          LIMIT $1`,
+        [batchSize],
+      );
+
+      let sent = 0;
+      for (const row of rows) {
+        // Stop at the first failure rather than skipping ahead: events for one
+        // request must reach the broker in the order they were recorded.
+        try {
+          await this.connection.sendToQueue(
+            row.queue,
+            row.pattern,
+            row.payload,
+          );
+        } catch (error) {
+          failed = true;
+          failure = error;
+          break;
+        }
+        await manager.query(
+          `UPDATE outbox SET published_at = now() WHERE id = $1`,
+          [row.id],
+        );
+        sent += 1;
+      }
+      return sent;
+    });
+
+    if (failed) {
+      throw failure;
     }
     return published;
   }

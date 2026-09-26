@@ -142,14 +142,16 @@ T9 -> T10
 
 **Done when**:
 
-- [ ] PostgreSQL: two relays on two data sources drain 100 rows for 10 requests. The counting publisher sees each id exactly once, and each request's events arrive in id order
-- [ ] PostgreSQL: a publisher that rejects on row 3 leaves rows 1–2 marked sent and rows 3 onwards pending. A second drain publishes the rest
-- [ ] A publisher that never resolves, run with a short `OUTBOX_PUBLISH_TIMEOUT_MS` through the real connection wrapper (or an injected equivalent), returns within the timeout and leaves the row pending
-- [ ] Removing the lock makes the two-relay test count duplicates. Marking outside the transaction breaks the stop-and-commit test
-- [ ] Build gate passes
+- [x] PostgreSQL: two relays on two data sources drain 100 rows for 10 requests. The counting publisher sees each id exactly once, and each request's events arrive in id order
+- [x] PostgreSQL: a publisher that rejects on row 3 leaves rows 1–2 marked sent and rows 3 onwards pending. A second drain publishes the rest
+- [x] A publisher that never resolves, run with a short `OUTBOX_PUBLISH_TIMEOUT_MS` through the real connection wrapper (or an injected equivalent), returns within the timeout and leaves the row pending
+- [~] Removing the lock makes the two-relay test count duplicates. Marking outside the transaction breaks the stop-and-commit test
+- [x] Build gate passes
 
 **Tests**: integration
 **Gate**: build
+
+**Status**: ✅ Complete, with one open item. Four new tests in `test/outbox-relay.e2e-spec.ts` (two relays, lock held elsewhere → 0, stop-and-commit, never-confirming broker through the real `RabbitMQConnection` pointed at `amqp://127.0.0.1:1` with a 300 ms timeout). Seen red before the change: the two-relay test (200 publishes) and the lock test. The stop-and-commit and timeout tests were already green, because the old autocommit drain stopped at the first failure and T2 added the timeout. Negatives: no lock → 200 publishes plus the lock test red; the error escaping the transaction (rolling back rows 1–2) → stop-and-commit red; no publish timeout → the timeout test hangs past 10 s. **Open**: the literal mutant "UPDATE through `this.dataSource` instead of the transaction's manager" survives. Those marks autocommit, so every spec outcome is identical; no behavior test can tell it apart. Build gate: lint, typecheck, 195 unit, 152 e2e (148 + 4), build; 0 skipped.
 
 ---
 
