@@ -52,21 +52,32 @@ describeIfDatabase('lifecycle ordering', () => {
     return request.processingRequestId;
   };
 
-  const start = (id: string, eventId: string = randomUUID()) =>
+  /** The request's current attempt, which the Worker's events carry. */
+  const attemptOf = async (id: string): Promise<string> =>
+    (await repository.findByProcessingRequestId(id))!.attemptId!;
+
+  const start = async (
+    id: string,
+    eventId: string = randomUUID(),
+    attemptId?: string,
+  ) =>
     new StartProcessingRequestUseCase(repository, unitOfWork).execute({
       eventId,
       processingRequestId: id,
+      attemptId: attemptId ?? (await attemptOf(id)),
       occurredAt: new Date().toISOString(),
     });
 
-  const complete = (
+  const complete = async (
     id: string,
     eventId: string = randomUUID(),
     zipStorageKey = `zips/${id}.zip`,
+    attemptId?: string,
   ) =>
     new CompleteProcessingRequestUseCase(repository, unitOfWork).execute({
       eventId,
       processingRequestId: id,
+      attemptId: attemptId ?? (await attemptOf(id)),
       zipStorageKey,
       occurredAt: new Date().toISOString(),
     });
@@ -200,5 +211,60 @@ describeIfDatabase('lifecycle ordering', () => {
     expect(stored!.failureCode).toBeUndefined();
     expect(await terminalRows(id)).toBe(0);
     expect(await repository.hasEventBeenProcessed(eventId)).toBe(false);
+  }, 30_000);
+
+  it('ignores a ProcessingFailed from an older attempt, then fails on the current one', async () => {
+    const id = await aQueuedRequest();
+    const current = await attemptOf(id);
+    const older = randomUUID();
+    const staleEventId = randomUUID();
+
+    await fail(id, older, staleEventId);
+    // A redelivery of the stale event is still a no-op.
+    await fail(id, older, staleEventId);
+
+    let stored = await repository.findByProcessingRequestId(id);
+    expect(stored!.status).toBe(ProcessingRequestStatus.QUEUED);
+    expect(stored!.attemptId).toBe(current);
+    expect(stored!.failureCode).toBeUndefined();
+    expect(await terminalRows(id)).toBe(0);
+    expect(await repository.hasEventBeenProcessed(staleEventId)).toBe(true);
+
+    await fail(id, current);
+
+    stored = await repository.findByProcessingRequestId(id);
+    expect(stored!.status).toBe(ProcessingRequestStatus.FAILED);
+    expect(stored!.failureCode).toBe('PROCESSAMENTO_FALHOU');
+    expect(await terminalRows(id)).toBe(1);
+
+    // Redelivered once more after the request failed: still nothing.
+    await fail(id, older, staleEventId);
+    expect(await terminalRows(id)).toBe(1);
+  }, 30_000);
+
+  it('ignores a ProcessingStarted and a ProcessingCompleted from an older attempt', async () => {
+    const id = await aQueuedRequest();
+    const older = randomUUID();
+    const staleStart = randomUUID();
+    const staleCompletion = randomUUID();
+
+    await start(id, staleStart, older);
+    await complete(id, staleCompletion, `zips/${id}.zip`, older);
+
+    let stored = await repository.findByProcessingRequestId(id);
+    expect(stored!.status).toBe(ProcessingRequestStatus.QUEUED);
+    expect(stored!.zipStorageKey).toBeUndefined();
+    expect(await terminalRows(id)).toBe(0);
+    expect(await repository.hasEventBeenProcessed(staleStart)).toBe(true);
+    expect(await repository.hasEventBeenProcessed(staleCompletion)).toBe(true);
+
+    await start(id);
+    await complete(id);
+    // The stale completion restating the stored archive, under a new eventId.
+    await complete(id, randomUUID(), `zips/${id}.zip`, older);
+
+    stored = await repository.findByProcessingRequestId(id);
+    expect(stored!.status).toBe(ProcessingRequestStatus.COMPLETED);
+    expect(await terminalRows(id)).toBe(1);
   }, 30_000);
 });

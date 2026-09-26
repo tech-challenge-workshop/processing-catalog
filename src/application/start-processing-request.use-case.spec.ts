@@ -46,6 +46,7 @@ describe('StartProcessingRequestUseCase', () => {
     const updated = await useCase.execute({
       eventId: 'started-1',
       processingRequestId: request.processingRequestId,
+      attemptId: request.attemptId!,
       occurredAt: new Date().toISOString(),
     });
 
@@ -63,6 +64,7 @@ describe('StartProcessingRequestUseCase', () => {
     const updated = await useCase.execute({
       eventId: 'started-1',
       processingRequestId: request.processingRequestId,
+      attemptId: request.attemptId!,
       occurredAt: new Date().toISOString(),
     });
 
@@ -74,6 +76,7 @@ describe('StartProcessingRequestUseCase', () => {
     const input = {
       eventId: 'started-1',
       processingRequestId: request.processingRequestId,
+      attemptId: request.attemptId!,
       occurredAt: new Date().toISOString(),
     };
 
@@ -89,6 +92,7 @@ describe('StartProcessingRequestUseCase', () => {
       useCase.execute({
         eventId: 'started-1',
         processingRequestId: 'does-not-exist',
+        attemptId: randomUUID(),
         occurredAt: new Date().toISOString(),
       }),
     ).rejects.toThrow('Processing request does-not-exist not found');
@@ -113,6 +117,7 @@ describe('StartProcessingRequestUseCase', () => {
       useCase.execute({
         eventId: 'started-1',
         processingRequestId: created.processingRequestId,
+        attemptId: randomUUID(),
         occurredAt: new Date().toISOString(),
       }),
     ).rejects.toThrow('Cannot start request in RECEIVED status');
@@ -128,8 +133,66 @@ describe('StartProcessingRequestUseCase', () => {
       useCase.execute({
         eventId: '',
         processingRequestId: 'req-1',
+        attemptId: randomUUID(),
         occurredAt: new Date().toISOString(),
       }),
     ).rejects.toThrow('eventId is required');
+  });
+
+  describe('an event from another attempt', () => {
+    it('changes nothing, publishes nothing and records the event, also when redelivered', async () => {
+      const request = await queuedRequest();
+      const snapshot = {
+        ...(await repository.findByProcessingRequestId(
+          request.processingRequestId,
+        ))!,
+      };
+      const entries = outbox.entries.length;
+      const stale = {
+        eventId: 'started-stale',
+        processingRequestId: request.processingRequestId,
+        attemptId: randomUUID(),
+        occurredAt: new Date().toISOString(),
+      };
+
+      const returned = await useCase.execute(stale);
+      const redelivered = await useCase.execute(stale);
+
+      expect(returned).toEqual(snapshot);
+      expect(redelivered).toEqual(snapshot);
+      expect(
+        await repository.findByProcessingRequestId(request.processingRequestId),
+      ).toEqual(snapshot);
+      expect(outbox.entries).toHaveLength(entries);
+      expect(await repository.hasEventBeenProcessed('started-stale')).toBe(
+        true,
+      );
+    });
+
+    it('still lets the current attempt start the request afterwards', async () => {
+      const request = await queuedRequest();
+      await useCase.execute({
+        eventId: 'started-stale',
+        processingRequestId: request.processingRequestId,
+        attemptId: randomUUID(),
+        occurredAt: new Date().toISOString(),
+      });
+
+      const updated = await useCase.execute({
+        eventId: 'started-current',
+        processingRequestId: request.processingRequestId,
+        attemptId: request.attemptId!,
+        occurredAt: new Date().toISOString(),
+      });
+
+      expect(updated.status).toBe(ProcessingRequestStatus.PROCESSING);
+      expect(
+        (
+          await repository.findByProcessingRequestId(
+            request.processingRequestId,
+          )
+        )?.status,
+      ).toBe(ProcessingRequestStatus.PROCESSING);
+    });
   });
 });

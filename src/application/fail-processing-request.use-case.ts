@@ -6,6 +6,7 @@ import {
   ProcessingRequestDomainError,
   failProcessingRequest,
   isFailureCode,
+  isStaleAttempt,
   rejectProcessingRequest,
 } from '../domain/processing-request';
 import { failureReasonFor } from '../domain/failure-reason';
@@ -83,6 +84,20 @@ export class FailProcessingRequestUseCase {
       // Checked again under the lock: the check above can race a concurrent
       // delivery of the same event.
       if (await ctx.requests.hasEventBeenProcessed(input.eventId)) {
+        return request;
+      }
+
+      if (
+        input.origin === 'processing' &&
+        isStaleAttempt(request, input.attemptId)
+      ) {
+        // An event from an earlier attempt: recorded so its redelivery is a
+        // duplicate, and otherwise ignored. Checked before the transition, so
+        // it is never mistaken for a restatement of the current attempt.
+        await ctx.requests.markEventProcessed(
+          input.eventId,
+          request.processingRequestId,
+        );
         return request;
       }
 

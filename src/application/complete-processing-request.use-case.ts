@@ -4,6 +4,7 @@ import {
   ProcessingRequest,
   ProcessingRequestDomainError,
   completeProcessingRequest,
+  isStaleAttempt,
   isUnchanged,
 } from '../domain/processing-request';
 import { EVENT_ROUTES } from './event-routes';
@@ -14,7 +15,7 @@ export interface CompleteProcessingRequestInput {
   eventId: string;
   processingRequestId: string;
   /** The attempt that produced the archive. */
-  attemptId?: string;
+  attemptId: string;
   zipStorageKey: string;
   occurredAt: string;
 }
@@ -62,6 +63,17 @@ export class CompleteProcessingRequestUseCase {
       // Checked again under the lock: the check above can race a concurrent
       // delivery of the same event.
       if (await ctx.requests.hasEventBeenProcessed(input.eventId)) {
+        return request;
+      }
+
+      if (isStaleAttempt(request, input.attemptId)) {
+        // An event from an earlier attempt: recorded so its redelivery is a
+        // duplicate, and otherwise ignored. Checked before the transition, so
+        // it is never mistaken for a restatement of the current attempt.
+        await ctx.requests.markEventProcessed(
+          input.eventId,
+          request.processingRequestId,
+        );
         return request;
       }
 

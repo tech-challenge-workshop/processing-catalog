@@ -31,6 +31,7 @@ export class ProcessingStartedConsumer implements OnModuleInit {
     await this.useCase.execute({
       eventId: parsed.eventId,
       processingRequestId: parsed.processingRequestId,
+      attemptId: parsed.attemptId,
       occurredAt: parsed.occurredAt,
     });
   }

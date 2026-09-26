@@ -70,6 +70,9 @@ describeIfDatabase('durability', () => {
     return request.processingRequestId;
   };
 
+  const attemptOf = async (id: string): Promise<string> =>
+    (await repository.findByProcessingRequestId(id))!.attemptId!;
+
   it('keeps a request in PROCESSING across a new connection', async () => {
     const id = await aQueuedRequest();
     const startEventId = randomUUID();
@@ -77,6 +80,7 @@ describeIfDatabase('durability', () => {
     await new StartProcessingRequestUseCase(repository, unitOfWork).execute({
       eventId: startEventId,
       processingRequestId: id,
+      attemptId: await attemptOf(id),
       occurredAt: new Date().toISOString(),
     });
 
@@ -110,6 +114,7 @@ describeIfDatabase('durability', () => {
     await start.execute({
       eventId: startEventId,
       processingRequestId: id,
+      attemptId: await attemptOf(id),
       occurredAt: new Date().toISOString(),
     });
     const pendingAfterFirst = await relay.pendingCount();
@@ -127,6 +132,7 @@ describeIfDatabase('durability', () => {
       ).execute({
         eventId: startEventId,
         processingRequestId: id,
+        attemptId: await attemptOf(id),
         occurredAt: new Date().toISOString(),
       });
 
@@ -144,6 +150,7 @@ describeIfDatabase('durability', () => {
     await new StartProcessingRequestUseCase(repository, unitOfWork).execute({
       eventId: randomUUID(),
       processingRequestId: id,
+      attemptId: await attemptOf(id),
       occurredAt: new Date().toISOString(),
     });
 
@@ -152,6 +159,7 @@ describeIfDatabase('durability', () => {
     await new CompleteProcessingRequestUseCase(repository, unitOfWork).execute({
       eventId: randomUUID(),
       processingRequestId: id,
+      attemptId: await attemptOf(id),
       zipStorageKey: 'zips/output.zip',
       occurredAt: new Date().toISOString(),
     });
@@ -182,11 +190,13 @@ describeIfDatabase('durability', () => {
     await new StartProcessingRequestUseCase(repository, unitOfWork).execute({
       eventId: randomUUID(),
       processingRequestId: id,
+      attemptId: await attemptOf(id),
       occurredAt: new Date().toISOString(),
     });
     await new CompleteProcessingRequestUseCase(repository, unitOfWork).execute({
       eventId: randomUUID(),
       processingRequestId: id,
+      attemptId: await attemptOf(id),
       zipStorageKey: 'zips/output.zip',
       occurredAt: new Date().toISOString(),
     });
@@ -213,6 +223,7 @@ describeIfDatabase('durability', () => {
       new CompleteProcessingRequestUseCase(repository, unitOfWork).execute({
         eventId,
         processingRequestId: id,
+        attemptId: randomUUID(),
         zipStorageKey: 'zips/output.zip',
         occurredAt: new Date().toISOString(),
       }),
