@@ -172,14 +172,15 @@ T4 -> T5
 - Skill: NONE
 
 **Done when**:
-- [ ] Blank owner → 400; `page`/`pageSize` invalid → 400 naming the parameter and range; the repository is not queried in either case
-- [ ] A non-UUID id → the constant 404 before any query; another owner's id and a random UUID → the same constant 404 body
-- [ ] e2e against PostgreSQL: two owners' lists disjoint, ordered, `total` correct; defaults `page=1`, `pageSize=20`
-- [ ] A composition e2e boots with `LOCAL_INTEGRATION` unset and asserts the owned routes answer while `GET /processing-requests/:id` (observation) is absent
-- [ ] Build gate passes, 0 skipped
+- [x] Blank owner → 400; `page`/`pageSize` invalid → 400 naming the parameter and range; the repository is not queried in either case
+- [x] A non-UUID id → the constant 404 before any query; another owner's id and a random UUID → the same constant 404 body
+- [x] e2e against PostgreSQL: two owners' lists disjoint, ordered, `total` correct; defaults `page=1`, `pageSize=20`
+- [x] A composition e2e boots with `LOCAL_INTEGRATION` unset and asserts the owned routes answer while `GET /processing-requests/:id` (observation) is absent
+- [x] Build gate passes, 0 skipped
 
 **Tests**: e2e
 **Gate**: build
+**Status**: ✅ Complete. Build gate green: lint, typecheck, unit 144, e2e 53 → 79 with 0 skipped, build. `test/owned-processing-requests.e2e-spec.ts` runs over PostgreSQL. `composition.e2e-spec.ts` checks the flag-unset mode, and `local-docker-integration.e2e-spec.ts` checks the flag-set mode (AC P1.9).
 
 ---
 

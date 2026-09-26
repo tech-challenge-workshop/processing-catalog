@@ -36,6 +36,9 @@ import { ProcessingStartedConsumer } from './infrastructure/rabbitmq/processing-
 import { ProcessingFailedConsumer } from './infrastructure/rabbitmq/processing-failed.consumer';
 import { HealthController } from './interface/health.controller';
 import { ProcessingRequestObservationController } from './interface/processing-request-observation.controller';
+import { OwnedProcessingRequestsController } from './interface/owned-processing-requests.controller';
+import { ListOwnedProcessingRequestsQuery } from './application/list-owned-processing-requests.query';
+import { GetOwnedProcessingRequestQuery } from './application/get-owned-processing-request.query';
 
 const isLocalIntegration = () => process.env.LOCAL_INTEGRATION === 'true';
 
@@ -45,6 +48,8 @@ const isLocalIntegration = () => process.env.LOCAL_INTEGRATION === 'true';
     AppController,
     CreateProcessingRequestController,
     HealthController,
+    // Owner-scoped reads serve production, so they are never behind the flag.
+    OwnedProcessingRequestsController,
     ...(isLocalIntegration() ? [ProcessingRequestObservationController] : []),
   ],
   providers: [
@@ -54,6 +59,8 @@ const isLocalIntegration = () => process.env.LOCAL_INTEGRATION === 'true';
     CompleteProcessingRequestUseCase,
     StartProcessingRequestUseCase,
     FailProcessingRequestUseCase,
+    ListOwnedProcessingRequestsQuery,
+    GetOwnedProcessingRequestQuery,
     InMemoryProcessingRequestRepository,
     DatabaseHealthIndicator,
     InMemoryOutboxWriter,
