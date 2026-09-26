@@ -314,13 +314,15 @@ T9 -> T10
 
 **Done when**:
 
-- [ ] 256 and 255 characters of `ownerUserId` give the exact `400` and `201` respectively. 1025 and 1024 characters of `sourceStorageKey` do the same
-- [ ] Nothing is written on any of these `400`s
-- [ ] A 3000-character source (V38's case) gives `400`, not `500`
-- [ ] Full gate passes
+- [x] 256 and 255 characters of `ownerUserId` give the exact `400` and `201` respectively. 1025 and 1024 characters of `sourceStorageKey` do the same
+- [x] Nothing is written on any of these `400`s
+- [x] A 3000-character source (V38's case) gives `400`, not `500`
+- [x] Full gate passes
 
 **Tests**: e2e
 **Gate**: full
+
+**Status**: ✅ Complete. `requireString` takes the field's bound and checks it last in that field's sequence (present, a string, not blank, not too long), so the fields keep their order `ownerUserId` (255), `sourceStorageKey` (1024), `idempotencyKey` (255, unchanged) and the key's separate check folds into the same helper; the message is `<field> must be at most <n> characters`. Five new tests in `test/create-processing-request-route.e2e-spec.ts` (seen red first: 201, 201 and 500): 256-character owner → exact `400`, 255 → `201`; 1025- and 3000-character source → exact `400`, 1024 → `201`; every `400` writes no row and no outbox entry (counted by the valid owner and source). The values are padded with random hex: a source of one repeated character compresses into a small index entry and was accepted with `201` even at 3000 characters, so it could not reproduce V38's `500`. Negatives: owner bound 256 → 1 red; source unbounded → 2 red; `>=` instead of `>` → 3 red (the three accepted boundaries). No existing test changed. Full gate: 227 unit, 167 e2e (162 + 5), 0 skipped.
 
 ---
 

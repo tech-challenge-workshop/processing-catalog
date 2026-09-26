@@ -67,28 +67,26 @@ export class CreateProcessingRequestController {
 
   /**
    * The body is untyped JSON whatever the DTO says, so each field is checked
-   * in order: present, a string, not blank. The key is also bounded, because
-   * it is stored under a unique btree index that an oversized value would
-   * overflow on every retry.
+   * in order, each through its own sequence: present, a string, not blank,
+   * not too long. Every field is bounded because each is stored under a btree
+   * index that an oversized value would overflow on every retry.
    */
   private validateDto(dto: CreateProcessingRequestDto): void {
-    requireString(dto, 'ownerUserId');
-    requireString(dto, 'sourceStorageKey');
-    requireString(dto, 'idempotencyKey');
-    if (dto.idempotencyKey.length > MAX_IDEMPOTENCY_KEY_LENGTH) {
-      throw new BadRequestException(
-        `idempotencyKey must be at most ${MAX_IDEMPOTENCY_KEY_LENGTH} characters`,
-      );
-    }
+    requireString(dto, 'ownerUserId', MAX_OWNER_USER_ID_LENGTH);
+    requireString(dto, 'sourceStorageKey', MAX_SOURCE_STORAGE_KEY_LENGTH);
+    requireString(dto, 'idempotencyKey', MAX_IDEMPOTENCY_KEY_LENGTH);
   }
 }
 
+const MAX_OWNER_USER_ID_LENGTH = 255;
+const MAX_SOURCE_STORAGE_KEY_LENGTH = 1024;
 /** Matches the API's limit on the Idempotency-Key header. */
 const MAX_IDEMPOTENCY_KEY_LENGTH = 255;
 
 function requireString(
   dto: CreateProcessingRequestDto,
   field: keyof CreateProcessingRequestDto,
+  maxLength: number,
 ): void {
   const value: unknown = dto[field];
   if (value === undefined || value === null) {
@@ -99,5 +97,10 @@ function requireString(
   }
   if (value.trim().length === 0) {
     throw new BadRequestException(`${field} is required`);
+  }
+  if (value.length > maxLength) {
+    throw new BadRequestException(
+      `${field} must be at most ${maxLength} characters`,
+    );
   }
 }
