@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 8,
+  "next_id": 11,
   "lessons": [
     {
       "id": "L-001",
@@ -132,6 +132,60 @@
       ],
       "created": "2026-09-26T13:56:10Z",
       "last_seen": "2026-09-26T13:56:10Z"
+    },
+    {
+      "id": "L-008",
+      "key": "spec_precision_gap::when a numeric config is passed to a library specify what 0 means in that library a parser rule copied from another setting can silently disable a safety timeout",
+      "text": "When a numeric config is passed to a library, specify what 0 means in that library; a parser rule copied from another setting can silently disable a safety timeout.",
+      "signal": "spec_precision_gap",
+      "scope": "config",
+      "status": "candidate",
+      "features": [
+        "catalog-messaging-hardening"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "src/infrastructure/rabbitmq/rabbitmq.connection.ts:52 (config)"
+      ],
+      "created": "2026-09-26T19:03:04Z",
+      "last_seen": "2026-09-26T19:03:04Z"
+    },
+    {
+      "id": "L-009",
+      "key": "surviving_mutant::test that a lock is released not only that it excludes an exclusion test passes equally for a lock never released",
+      "text": "Test that a lock is released, not only that it excludes; an exclusion test passes equally for a lock never released.",
+      "signal": "surviving_mutant",
+      "scope": "persistence",
+      "status": "candidate",
+      "features": [
+        "catalog-messaging-hardening"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "src/infrastructure/messaging/outbox-relay.ts (persistence)"
+      ],
+      "created": "2026-09-26T19:03:04Z",
+      "last_seen": "2026-09-26T19:03:04Z"
+    },
+    {
+      "id": "L-010",
+      "key": "spec_precision_gap::when a rule makes a previously ignored field meaningful re check every parser of that field for presence only validation",
+      "text": "When a rule makes a previously ignored field meaningful, re-check every parser of that field for presence-only validation.",
+      "signal": "spec_precision_gap",
+      "scope": "messaging",
+      "status": "candidate",
+      "features": [
+        "catalog-messaging-hardening"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "src/infrastructure/rabbitmq/processing-failed.consumer.ts:55 (messaging)"
+      ],
+      "created": "2026-09-26T19:03:04Z",
+      "last_seen": "2026-09-26T19:03:04Z"
     }
   ]
 }

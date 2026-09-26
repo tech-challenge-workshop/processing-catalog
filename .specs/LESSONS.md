@@ -54,6 +54,24 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: src/application/create-processing-request.use-case.ts:118 (application)
 - last seen: 2026-09-26T13:56:10Z
 
+### L-008 - When a numeric config is passed to a library, specify what 0 means in that library; a parser rule copied from another setting can silently disable a safety timeout.
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `config` · harmful: 0
+- features: catalog-messaging-hardening
+- evidence: src/infrastructure/rabbitmq/rabbitmq.connection.ts:52 (config)
+- last seen: 2026-09-26T19:03:04Z
+
+### L-009 - Test that a lock is released, not only that it excludes; an exclusion test passes equally for a lock never released.
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `persistence` · harmful: 0
+- features: catalog-messaging-hardening
+- evidence: src/infrastructure/messaging/outbox-relay.ts (persistence)
+- last seen: 2026-09-26T19:03:04Z
+
+### L-010 - When a rule makes a previously ignored field meaningful, re-check every parser of that field for presence-only validation.
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `messaging` · harmful: 0
+- features: catalog-messaging-hardening
+- evidence: src/infrastructure/rabbitmq/processing-failed.consumer.ts:55 (messaging)
+- last seen: 2026-09-26T19:03:04Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
