@@ -85,15 +85,15 @@ Decisions of 2026-09-26 are in the API half's spec. V26 and V27 move here from s
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| HARD-09 | P1: One request per source (V32) | Design | In Design |
-| HARD-10 | P2: Key length bounded (V26) | Design | In Design |
-| HARD-11 | P2: Non-string fields rejected (V27) | Design | In Design |
+| HARD-09 | P1: One request per source (V32) | Tasks | In Tasks |
+| HARD-10 | P2: Key length bounded (V26) | Tasks | In Tasks |
+| HARD-11 | P2: Non-string fields rejected (V27) | Tasks | In Tasks |
 
 **ID format:** `[CATEGORY]-[NUMBER]`
 
 **Status values:** Pending → In Design → In Tasks → Implementing → Verified
 
-**Coverage:** 3 total, 0 mapped to tasks, 3 unmapped ⚠️ (mapped in Tasks)
+**Coverage:** 3 total, 3 mapped to tasks, 0 unmapped
 
 ---
 
