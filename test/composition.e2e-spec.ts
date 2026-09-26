@@ -1,5 +1,11 @@
+// AppModule reads the flag when it is loaded: unset it first so this suite
+// always asserts the production composition.
+delete process.env.LOCAL_INTEGRATION;
+
+import { randomUUID } from 'crypto';
 import { Test } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
+import request from 'supertest';
 import { DataSource } from 'typeorm';
 import { AppModule } from '../src/app.module';
 import { UNIT_OF_WORK } from '../src/application/unit-of-work';
@@ -78,6 +84,36 @@ describe('composition root', () => {
     );
     expect(app.get(UNIT_OF_WORK)).toBeInstanceOf(InMemoryUnitOfWork);
     expect(app.get(DATA_SOURCE, { strict: false })).toBeUndefined();
+  }, 30_000);
+
+  it('serves the owned routes and not the observation route when LOCAL_INTEGRATION is unset', async () => {
+    ({ app, restore } = await bootWith(undefined));
+    const http = () => request(app!.getHttpServer() as import('http').Server);
+    const id = randomUUID();
+
+    const list = await http().get('/owners/alice/processing-requests');
+    const one = await http().get(`/owners/alice/processing-requests/${id}`);
+    const observation = await http().get(`/processing-requests/${id}`);
+
+    expect(list.status).toBe(200);
+    expect(list.body).toStrictEqual({
+      items: [],
+      page: 1,
+      pageSize: 20,
+      total: 0,
+    });
+    // The controller's own 404, not the router's "Cannot GET".
+    expect(one.status).toBe(404);
+    expect(one.body).toStrictEqual({
+      message: 'Processing request not found',
+      error: 'Not Found',
+      statusCode: 404,
+    });
+    // No route at all: the router answers, not the observation controller.
+    expect(observation.status).toBe(404);
+    expect((observation.body as { message: string }).message).toBe(
+      `Cannot GET /processing-requests/${id}`,
+    );
   }, 30_000);
 
   const describeIfDatabase = process.env.DATABASE_HOST

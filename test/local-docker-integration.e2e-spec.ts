@@ -352,6 +352,31 @@ describe('Local Docker Integration (e2e)', () => {
     expect(state.status).toBe('RECEIVED');
   });
 
+  it('serves the owned routes when LOCAL_INTEGRATION=true as well', async () => {
+    const created = await request(app.getHttpServer() as import('http').Server)
+      .post('/processing-requests')
+      .send({ ownerUserId: 'user-owned', sourceStorageKey: 'videos/o.mp4' });
+    const body = created.body as CreateProcessingRequestResponse;
+
+    const list = await request(
+      app.getHttpServer() as import('http').Server,
+    ).get('/owners/user-owned/processing-requests');
+    const one = await request(app.getHttpServer() as import('http').Server).get(
+      `/owners/user-owned/processing-requests/${body.processingRequestId}`,
+    );
+
+    expect(list.status).toBe(200);
+    expect(
+      (list.body as { items: { processingRequestId: string }[] }).items.map(
+        (i) => i.processingRequestId,
+      ),
+    ).toEqual([body.processingRequestId]);
+    expect(one.status).toBe(200);
+    expect(
+      (one.body as { processingRequestId: string }).processingRequestId,
+    ).toBe(body.processingRequestId);
+  });
+
   it('returns 200 on /health when RabbitMQ is up', async () => {
     const response = await request(
       app.getHttpServer() as import('http').Server,
