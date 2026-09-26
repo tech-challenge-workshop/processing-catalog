@@ -98,12 +98,13 @@ T6
 - Skill: NONE
 
 **Done when**:
-- [ ] Lookup returns the owner's request for the key and `undefined` for another owner's same key
-- [ ] Duplicate save raises `DuplicateIdempotencyKeyError`; the same key for another owner does not
-- [ ] Quick gate passes; at least 5 new tests
+- [x] Lookup returns the owner's request for the key and `undefined` for another owner's same key
+- [x] Duplicate save raises `DuplicateIdempotencyKeyError`; the same key for another owner does not
+- [x] Quick gate passes; at least 5 new tests
 
 **Tests**: unit
 **Gate**: quick
+**Status**: ✅ Complete. Quick gate green (unit 145 → 151). `DuplicateIdempotencyKeyError` is declared next to the port in `src/domain/processing-request.repository.ts`. `tsc` stays red until T3 implements the lookup in the TypeORM adapter.
 
 ---
 
