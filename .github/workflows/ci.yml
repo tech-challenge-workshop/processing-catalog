@@ -36,7 +36,9 @@ jobs:
     env:
       DATABASE_HOST: localhost
       DATABASE_PORT: 5432
-      DATABASE_NAME: fiapx
+      # No DATABASE_NAME: the e2e harness defaults it to fiapx_e2e and refuses
+      # fiapx. Its global setup creates that database as the service's admin
+      # user (postgres/postgres, the harness's DATABASE_ADMIN_* defaults).
       DATABASE_SCHEMA: catalog
       DATABASE_USER: catalog
       DATABASE_PASSWORD: catalog
