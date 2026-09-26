@@ -33,6 +33,8 @@ export class ProcessingFailedConsumer implements OnModuleInit {
     const parsed = this.parse(JSON.parse(content));
     await this.useCase.execute({
       eventId: parsed.eventId,
+      origin: 'processing',
+      attemptId: parsed.attemptId,
       processingRequestId: parsed.processingRequestId,
       failureCode: parsed.failureCode,
       occurredAt: parsed.occurredAt,

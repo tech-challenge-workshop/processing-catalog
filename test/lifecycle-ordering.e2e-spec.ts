@@ -1,12 +1,14 @@
 import { randomUUID } from 'crypto';
 import { DataSource } from 'typeorm';
 import {
+  ProcessingRequestDomainError,
   ProcessingRequestStatus,
   createProcessingRequest,
 } from '../src/domain/processing-request';
 import { AcceptProcessingRequestUseCase } from '../src/application/accept-processing-request.use-case';
 import { StartProcessingRequestUseCase } from '../src/application/start-processing-request.use-case';
 import { CompleteProcessingRequestUseCase } from '../src/application/complete-processing-request.use-case';
+import { FailProcessingRequestUseCase } from '../src/application/fail-processing-request.use-case';
 import { createDataSource } from '../src/infrastructure/persistence/data-source';
 import { TypeOrmProcessingRequestRepository } from '../src/infrastructure/persistence/typeorm-processing-request.repository';
 import { TypeOrmUnitOfWork } from '../src/infrastructure/persistence/typeorm-unit-of-work';
@@ -66,6 +68,38 @@ describeIfDatabase('lifecycle ordering', () => {
       eventId,
       processingRequestId: id,
       zipStorageKey,
+      occurredAt: new Date().toISOString(),
+    });
+
+  const aReceivedRequest = async () => {
+    const request = createProcessingRequest({
+      ownerUserId: 'user-' + randomUUID(),
+      sourceStorageKey: 'videos/input.mp4',
+    });
+    await repository.save(request);
+    return request.processingRequestId;
+  };
+
+  const reject = (id: string, eventId: string = randomUUID()) =>
+    new FailProcessingRequestUseCase(repository, unitOfWork).execute({
+      eventId,
+      origin: 'validation',
+      processingRequestId: id,
+      failureCode: 'FORMATO_INVALIDO',
+      occurredAt: new Date().toISOString(),
+    });
+
+  const fail = (
+    id: string,
+    attemptId: string | undefined,
+    eventId: string = randomUUID(),
+  ) =>
+    new FailProcessingRequestUseCase(repository, unitOfWork).execute({
+      eventId,
+      origin: 'processing',
+      attemptId,
+      processingRequestId: id,
+      failureCode: 'PROCESSAMENTO_FALHOU',
       occurredAt: new Date().toISOString(),
     });
 
@@ -132,5 +166,39 @@ describeIfDatabase('lifecycle ordering', () => {
     await Promise.all([complete(id, eventId), complete(id, eventId)]);
 
     expect(await terminalRows(id)).toBe(1);
+  }, 30_000);
+
+  it('refuses a validation rejection once the request is QUEUED, and keeps it QUEUED', async () => {
+    const id = await aQueuedRequest();
+    const eventId = randomUUID();
+
+    await expect(reject(id, eventId)).rejects.toThrow(
+      new ProcessingRequestDomainError(
+        'Cannot reject request in QUEUED status',
+      ),
+    );
+
+    const stored = await repository.findByProcessingRequestId(id);
+    expect(stored!.status).toBe(ProcessingRequestStatus.QUEUED);
+    expect(stored!.failureCode).toBeUndefined();
+    expect(await terminalRows(id)).toBe(0);
+    expect(await repository.hasEventBeenProcessed(eventId)).toBe(false);
+  }, 30_000);
+
+  it('refuses a processing failure for a RECEIVED request, and keeps it RECEIVED', async () => {
+    const id = await aReceivedRequest();
+    const eventId = randomUUID();
+
+    await expect(fail(id, randomUUID(), eventId)).rejects.toThrow(
+      new ProcessingRequestDomainError(
+        'Cannot fail request in RECEIVED status',
+      ),
+    );
+
+    const stored = await repository.findByProcessingRequestId(id);
+    expect(stored!.status).toBe(ProcessingRequestStatus.RECEIVED);
+    expect(stored!.failureCode).toBeUndefined();
+    expect(await terminalRows(id)).toBe(0);
+    expect(await repository.hasEventBeenProcessed(eventId)).toBe(false);
   }, 30_000);
 });
