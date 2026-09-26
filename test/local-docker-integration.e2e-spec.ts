@@ -1,5 +1,6 @@
 process.env.LOCAL_INTEGRATION = 'true';
 
+import { randomUUID } from 'crypto';
 import { Test } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
@@ -200,6 +201,7 @@ describe('Local Docker Integration (e2e)', () => {
       .send({
         ownerUserId: 'user-123',
         sourceStorageKey: 'videos/input.mp4',
+        idempotencyKey: randomUUID(),
       });
 
     const body = createResponse.body as CreateProcessingRequestResponse;
@@ -281,6 +283,7 @@ describe('Local Docker Integration (e2e)', () => {
       .send({
         ownerUserId: 'user-456',
         sourceStorageKey: 'videos/duplicate.mp4',
+        idempotencyKey: randomUUID(),
       });
 
     const body = createResponse.body as CreateProcessingRequestResponse;
@@ -311,6 +314,7 @@ describe('Local Docker Integration (e2e)', () => {
       .send({
         ownerUserId: 'user-789',
         sourceStorageKey: 'videos/invalid.mp4',
+        idempotencyKey: randomUUID(),
       });
 
     const body = createResponse.body as CreateProcessingRequestResponse;
@@ -339,6 +343,7 @@ describe('Local Docker Integration (e2e)', () => {
       .send({
         ownerUserId: 'user-obs',
         sourceStorageKey: 'videos/obs.mp4',
+        idempotencyKey: randomUUID(),
       });
 
     const body = createResponse.body as CreateProcessingRequestResponse;
@@ -355,7 +360,11 @@ describe('Local Docker Integration (e2e)', () => {
   it('serves the owned routes when LOCAL_INTEGRATION=true as well', async () => {
     const created = await request(app.getHttpServer() as import('http').Server)
       .post('/processing-requests')
-      .send({ ownerUserId: 'user-owned', sourceStorageKey: 'videos/o.mp4' });
+      .send({
+        ownerUserId: 'user-owned',
+        sourceStorageKey: 'videos/o.mp4',
+        idempotencyKey: randomUUID(),
+      });
     const body = created.body as CreateProcessingRequestResponse;
 
     const list = await request(
@@ -393,7 +402,11 @@ describe('Local Docker Integration (e2e)', () => {
   const createRequest = async (ownerUserId: string, key: string) => {
     const response = await request(app.getHttpServer() as import('http').Server)
       .post('/processing-requests')
-      .send({ ownerUserId, sourceStorageKey: key });
+      .send({
+        ownerUserId,
+        sourceStorageKey: key,
+        idempotencyKey: randomUUID(),
+      });
     return response.body as CreateProcessingRequestResponse;
   };
 

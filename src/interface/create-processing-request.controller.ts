@@ -1,6 +1,18 @@
-import { Body, Controller, Post, BadRequestException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  ConflictException,
+  Controller,
+  HttpStatus,
+  Post,
+  Res,
+} from '@nestjs/common';
+import type { Response } from 'express';
 import { randomUUID } from 'crypto';
-import { CreateProcessingRequestUseCase } from '../application/create-processing-request.use-case';
+import {
+  CreateProcessingRequestUseCase,
+  IdempotencyConflictError,
+} from '../application/create-processing-request.use-case';
 import { ProcessingRequestDomainError } from '../domain/processing-request';
 import { CreateProcessingRequestDto } from './create-processing-request.dto';
 
@@ -10,19 +22,30 @@ export class CreateProcessingRequestController {
     private readonly createProcessingRequestUseCase: CreateProcessingRequestUseCase,
   ) {}
 
+  /**
+   * 201 when this call created the request, 200 when the owner's key
+   * replayed an existing one (same body), 409 when the key is bound to
+   * another source. The API maps these one-to-one.
+   */
   @Post()
-  async create(@Body() dto: CreateProcessingRequestDto) {
+  async create(
+    @Body() dto: CreateProcessingRequestDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     this.validateDto(dto);
 
     try {
-      const { request } = await this.createProcessingRequestUseCase.execute({
-        eventId: randomUUID(),
-        ownerUserId: dto.ownerUserId,
-        sourceStorageKey: dto.sourceStorageKey,
-        // Transitional until T5 requires the key on this route: a fresh key
-        // per call keeps today's behaviour, one request per POST.
-        idempotencyKey: randomUUID(),
-      });
+      const { request, outcome } =
+        await this.createProcessingRequestUseCase.execute({
+          eventId: randomUUID(),
+          ownerUserId: dto.ownerUserId,
+          sourceStorageKey: dto.sourceStorageKey,
+          idempotencyKey: dto.idempotencyKey,
+        });
+
+      if (outcome === 'replayed') {
+        res.status(HttpStatus.OK);
+      }
 
       return {
         processingRequestId: request.processingRequestId,
@@ -32,6 +55,9 @@ export class CreateProcessingRequestController {
         createdAt: request.createdAt.toISOString(),
       };
     } catch (error) {
+      if (error instanceof IdempotencyConflictError) {
+        throw new ConflictException(error.message);
+      }
       if (error instanceof ProcessingRequestDomainError) {
         throw new BadRequestException(error.message);
       }
@@ -45,6 +71,9 @@ export class CreateProcessingRequestController {
     }
     if (!dto.sourceStorageKey || dto.sourceStorageKey.trim().length === 0) {
       throw new BadRequestException('sourceStorageKey is required');
+    }
+    if (!dto.idempotencyKey || dto.idempotencyKey.trim().length === 0) {
+      throw new BadRequestException('idempotencyKey is required');
     }
   }
 }

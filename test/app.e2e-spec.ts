@@ -77,6 +77,7 @@ describe('AppController (e2e)', () => {
         .send({
           ownerUserId: 'user-123',
           sourceStorageKey: 'videos/input.mp4',
+          idempotencyKey: 'key-1',
         });
 
       const body = response.body as CreateProcessingRequestResponse;
@@ -105,7 +106,7 @@ describe('AppController (e2e)', () => {
     it('rejects creation with missing fields', async () => {
       const response = await request(app.getHttpServer())
         .post('/processing-requests')
-        .send({ ownerUserId: 'user-123' });
+        .send({ ownerUserId: 'user-123', idempotencyKey: 'key-1' });
 
       expect(response.status).toBe(400);
       expect(outbox.recordedValidationRequests).toHaveLength(0);
@@ -118,6 +119,7 @@ describe('AppController (e2e)', () => {
         .send({
           ownerUserId: 'user-123',
           sourceStorageKey: 'videos/input.mp4',
+          idempotencyKey: 'key-1',
         });
 
       const body = created.body as CreateProcessingRequestResponse;

@@ -49,6 +49,7 @@ describe('CreateProcessingRequestController (integration)', () => {
     const response = await request.post('/processing-requests').send({
       ownerUserId: 'user-123',
       sourceStorageKey: 'videos/input.mp4',
+      idempotencyKey: 'key-1',
     });
 
     const body = response.body as CreateProcessingRequestResponse;
@@ -64,6 +65,7 @@ describe('CreateProcessingRequestController (integration)', () => {
   it('rejects a request without ownerUserId', async () => {
     const response = await request.post('/processing-requests').send({
       sourceStorageKey: 'videos/input.mp4',
+      idempotencyKey: 'key-1',
     });
 
     expect(response.status).toBe(400);
@@ -72,6 +74,7 @@ describe('CreateProcessingRequestController (integration)', () => {
   it('rejects a request without sourceStorageKey', async () => {
     const response = await request.post('/processing-requests').send({
       ownerUserId: 'user-123',
+      idempotencyKey: 'key-1',
     });
 
     expect(response.status).toBe(400);
