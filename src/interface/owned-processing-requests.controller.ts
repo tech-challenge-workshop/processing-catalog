@@ -1,11 +1,13 @@
 import {
   BadRequestException,
+  ConflictException,
   Controller,
   Get,
   NotFoundException,
   Param,
   Query,
 } from '@nestjs/common';
+import { GetOwnedArchiveQuery } from '../application/get-owned-archive.query';
 import { GetOwnedProcessingRequestQuery } from '../application/get-owned-processing-request.query';
 import { ListOwnedProcessingRequestsQuery } from '../application/list-owned-processing-requests.query';
 import { OwnedItem, OwnedPage } from '../application/owned-item';
@@ -26,6 +28,7 @@ export class OwnedProcessingRequestsController {
   constructor(
     private readonly listOwned: ListOwnedProcessingRequestsQuery,
     private readonly getOwned: GetOwnedProcessingRequestQuery,
+    private readonly getArchive: GetOwnedArchiveQuery,
   ) {}
 
   @Get()
@@ -74,6 +77,33 @@ export class OwnedProcessingRequestsController {
       throw notFound();
     }
     return item;
+  }
+
+  /**
+   * The archive key of a completed request, for its owner only: the API
+   * turns it into a download URL. 409 while there is no archive yet; every
+   * miss is the same 404 as the item route.
+   */
+  @Get(':id/archive')
+  async findArchive(
+    @Param('ownerUserId') ownerUserId: string,
+    @Param('id') id: string,
+  ): Promise<{ zipStorageKey: string }> {
+    this.requireOwner(ownerUserId);
+    if (!UUID.test(id)) {
+      throw notFound();
+    }
+    const archive = await this.getArchive.execute({
+      ownerUserId,
+      processingRequestId: id,
+    });
+    if (archive.kind === 'not-found') {
+      throw notFound();
+    }
+    if (archive.kind === 'not-completed') {
+      throw new ConflictException('Processing request is not completed');
+    }
+    return { zipStorageKey: archive.zipStorageKey };
   }
 
   private requireOwner(ownerUserId: string): void {

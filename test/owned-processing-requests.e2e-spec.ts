@@ -434,4 +434,142 @@ describeIfDatabase('owned processing requests over HTTP (PostgreSQL)', () => {
       }
     });
   });
+
+  describe('GET /owners/:ownerUserId/processing-requests/:id/archive', () => {
+    const completedFor = async (ownerUserId: string, zipStorageKey: string) => {
+      const completed = completeProcessingRequest(
+        acceptProcessingRequest(await seed(ownerUserId, t(1))),
+        zipStorageKey,
+      );
+      await repository.update(completed);
+      return completed;
+    };
+
+    it('returns exactly { zipStorageKey } of a completed request to its owner', async () => {
+      const alice = owner('alice');
+      const completed = await completedFor(alice, `zips/${alice}/out.zip`);
+
+      const res = await http().get(
+        `/owners/${alice}/processing-requests/${completed.processingRequestId}/archive`,
+      );
+
+      expect(res.status).toBe(200);
+      expect(res.body).toStrictEqual({
+        zipStorageKey: `zips/${alice}/out.zip`,
+      });
+    });
+
+    it.each<[string, (r: ProcessingRequest) => ProcessingRequest]>([
+      ['RECEIVED', (r) => r],
+      ['QUEUED', (r) => acceptProcessingRequest(r)],
+      [
+        'FAILED',
+        (r) =>
+          failProcessingRequest(
+            acceptProcessingRequest(r),
+            'PROCESSAMENTO_FALHOU',
+          ),
+      ],
+    ])('answers 409 for an owned %s request', async (_status, transition) => {
+      const alice = owner('alice');
+      const seeded = await seed(alice, t(1));
+      const moved = transition(seeded);
+      if (moved !== seeded) {
+        await repository.update(moved);
+      }
+
+      const res = await http().get(
+        `/owners/${alice}/processing-requests/${seeded.processingRequestId}/archive`,
+      );
+
+      expect(res.status).toBe(409);
+      expect(res.body).toStrictEqual({
+        message: 'Processing request is not completed',
+        error: 'Conflict',
+        statusCode: 409,
+      });
+    });
+
+    it("answers another owner's completed id, a random id and a malformed one with the constant 404, byte-identical to the item route's", async () => {
+      const alice = owner('alice');
+      const completed = await completedFor(alice, `zips/${alice}/out.zip`);
+      const itemMiss = await http().get(
+        `/owners/${alice}/processing-requests/${randomUUID()}`,
+      );
+
+      const others = await http().get(
+        `/owners/${owner('bob')}/processing-requests/${completed.processingRequestId}/archive`,
+      );
+      const random = await http().get(
+        `/owners/${alice}/processing-requests/${randomUUID()}/archive`,
+      );
+      const malformed = await http().get(
+        `/owners/${alice}/processing-requests/not-a-uuid/archive`,
+      );
+
+      for (const res of [others, random, malformed]) {
+        expect(res.status).toBe(404);
+        expect(res.body).toStrictEqual(NOT_FOUND);
+        expect(res.text).toBe(itemMiss.text);
+      }
+      expect(others.text).not.toContain(`zips/${alice}/out.zip`);
+    });
+
+    it('answers a malformed id with 404 before any query', async () => {
+      const reads = spyOnReads();
+
+      const res = await http().get(
+        `/owners/${owner('alice')}/processing-requests/abc/archive`,
+      );
+
+      expect(res.status).toBe(404);
+      expect(res.body).toStrictEqual(NOT_FOUND);
+      for (const read of reads) {
+        expect(read).not.toHaveBeenCalled();
+      }
+    });
+
+    it('answers 400 for a blank owner without querying', async () => {
+      const reads = spyOnReads();
+
+      const res = await http().get(
+        `/owners/%20/processing-requests/${randomUUID()}/archive`,
+      );
+
+      expect(res.status).toBe(400);
+      expect((res.body as { message: string }).message).toBe(
+        'ownerUserId is required',
+      );
+      for (const read of reads) {
+        expect(read).not.toHaveBeenCalled();
+      }
+    });
+
+    it('keeps the list and the read of a completed request free of the archive key', async () => {
+      const alice = owner('alice');
+      const zip = `zips/${alice}/out.zip`;
+      const completed = await completedFor(alice, zip);
+
+      const list = await http().get(`/owners/${alice}/processing-requests`);
+      const one = await http().get(
+        `/owners/${alice}/processing-requests/${completed.processingRequestId}`,
+      );
+
+      expect(list.status).toBe(200);
+      expect(one.status).toBe(200);
+      expect((list.body as OwnedPageBody).items).toHaveLength(1);
+      for (const item of [(list.body as OwnedPageBody).items[0], one.body]) {
+        expect(Object.keys(item as object).sort()).toEqual([
+          'createdAt',
+          'processingRequestId',
+          'status',
+          'updatedAt',
+        ]);
+      }
+      expect(list.text).not.toContain(zip);
+      expect(one.text).not.toContain(zip);
+      expect(list.text).not.toContain('zipStorageKey');
+      expect(one.text).not.toContain('zipStorageKey');
+    });
+  });
 });
