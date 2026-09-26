@@ -8,7 +8,11 @@
 
 Corroborated across multiple features. Safe to apply as guidance.
 
-_none_
+### L-005 - A client-chosen token stored under a btree unique index needs a specified maximum length so an oversized value is a 400, not a 500.
+- signal: `spec_precision_gap` · recurrence: 2 feature(s) · scope: `persistence` · harmful: 0
+- features: upload-download, api-hardening
+- evidence: src/infrastructure/persistence/migrations/1789956000000-AddIdempotencyKey.ts:16 (persistence) (+1 more)
+- last seen: 2026-09-26T13:56:10Z
 
 ## Candidates (under observation - do NOT load as guidance yet)
 
@@ -38,11 +42,17 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: src/interface/create-processing-request.controller.ts:75 (interface)
 - last seen: 2026-09-26T05:29:40Z
 
-### L-005 - A client-chosen token stored under a btree unique index needs a specified maximum length so an oversized value is a 400, not a 500.
-- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `persistence` · harmful: 0
-- features: upload-download
-- evidence: src/infrastructure/persistence/migrations/1789956000000-AddIdempotencyKey.ts:16 (persistence)
-- last seen: 2026-09-26T05:29:40Z
+### L-006 - When a spec fixes a validation order across fields, add at least one test with two malformed fields.
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `interface` · harmful: 0
+- features: api-hardening
+- evidence: src/interface/create-processing-request.controller.ts:75 (interface)
+- last seen: 2026-09-26T13:56:10Z
+
+### L-007 - Test the lost-race branch where the re-read finds nothing, not only the branch where it finds the winner.
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `application` · harmful: 0
+- features: api-hardening
+- evidence: src/application/create-processing-request.use-case.ts:118 (application)
+- last seen: 2026-09-26T13:56:10Z
 
 ## Quarantined (failed when applied - ignore)
 
