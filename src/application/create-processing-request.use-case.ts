@@ -6,6 +6,7 @@ import {
 } from '../domain/processing-request';
 import {
   DuplicateIdempotencyKeyError,
+  DuplicateSourceError,
   type ProcessingRequestRepository,
 } from '../domain/processing-request.repository';
 import { EVENT_ROUTES } from './event-routes';
@@ -72,6 +73,16 @@ export class CreateProcessingRequestUseCase {
       return this.replay(bound, input);
     }
 
+    // The key is new. One upload is one request, so a source the owner
+    // already has answers with that request, whatever key created it.
+    const known = await this.repository.findByOwnerAndSource(
+      input.ownerUserId,
+      input.sourceStorageKey,
+    );
+    if (known) {
+      return { request: known, outcome: 'replayed' };
+    }
+
     const event: VideoValidationRequestedEvent = {
       eventId: input.eventId,
       processingRequestId: request.processingRequestId,
@@ -96,6 +107,19 @@ export class CreateProcessingRequestUseCase {
         );
       });
     } catch (error) {
+      if (error instanceof DuplicateSourceError) {
+        // A concurrent create for the same source, under another key,
+        // committed first. As below, ours was rolled back and the winner is
+        // read outside it.
+        const winner = await this.repository.findByOwnerAndSource(
+          input.ownerUserId,
+          input.sourceStorageKey,
+        );
+        if (!winner) {
+          throw error;
+        }
+        return { request: winner, outcome: 'replayed' };
+      }
       if (!(error instanceof DuplicateIdempotencyKeyError)) {
         throw error;
       }

@@ -160,19 +160,21 @@ T5
 
 **Done when**:
 
-- [ ] Unit: new key with a known source → `replayed` with that request, and no row, outbox entry or processed-event record is written
-- [ ] Unit: a key bound to another source still gives `IdempotencyConflictError`, even when the new source already has a request
-- [ ] Unit: a pre-S6 request with a `NULL` key and the same source is returned
-- [ ] PostgreSQL:
+- [x] Unit: new key with a known source → `replayed` with that request, and no row, outbox entry or processed-event record is written
+- [x] Unit: a key bound to another source still gives `IdempotencyConflictError`, even when the new source already has a request
+- [x] Unit: a pre-S6 request with a `NULL` key and the same source is returned
+- [x] PostgreSQL:
   - two concurrent creates with different keys on one source → one row, one outbox entry, and the same id on both
   - a burst of 8 on one source → one row
   - a loser forced past the lookup raises `DuplicateSourceError` and returns the winner
-- [ ] Route: K1 → `201`; K2 with the same source → `200` with a body identical to the `201`; rows 1, outbox 1
-- [ ] Discrimination: removing the source lookup or the source re-read turns a test red
-- [ ] Full gate passes
+- [x] Route: K1 → `201`; K2 with the same source → `200` with a body identical to the `201`; rows 1, outbox 1
+- [x] Discrimination: removing the source lookup or the source re-read turns a test red
+- [x] Full gate passes
 
 **Tests**: unit + integration
 **Gate**: full
+
+**Status**: ✅ Complete. Full gate green: unit 175 → 179, e2e 118 → 122 with 0 skipped. After the key lookup misses, `findByOwnerAndSource` answers `replayed`; a `DuplicateSourceError` from the transaction is re-read by source outside it and rethrown if the re-read finds nothing. The key check stays first. Discrimination, run in scratch and reverted: ignoring the source lookup's result turns the unit "new key on a known source" test red (it asserts no insert is attempted); disabling the source re-read turns the unit source-race test and all three PostgreSQL source tests red. Existing tests changed: the S6 forced-loser tests (unit and `test/idempotent-creation.e2e-spec.ts`) now also force `findByOwnerAndSource` to miss once. A create that read before the winner committed misses both lookups; without this the new source lookup answers them and they would no longer reach the key index. Their assertions are unchanged.
 
 ---
 
