@@ -32,6 +32,18 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: src/interface/owned-processing-requests.controller.ts:80
 - last seen: 2026-09-26T03:43:02Z
 
+### L-004 - When a client-chosen identifier is trimmed for validation, the spec must say whether the raw or trimmed value is stored and matched.
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `interface` · harmful: 0
+- features: upload-download
+- evidence: src/interface/create-processing-request.controller.ts:75 (interface)
+- last seen: 2026-09-26T05:29:40Z
+
+### L-005 - A client-chosen token stored under a btree unique index needs a specified maximum length so an oversized value is a 400, not a 500.
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `persistence` · harmful: 0
+- features: upload-download
+- evidence: src/infrastructure/persistence/migrations/1789956000000-AddIdempotencyKey.ts:16 (persistence)
+- last seen: 2026-09-26T05:29:40Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.
