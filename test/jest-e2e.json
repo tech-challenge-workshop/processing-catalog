@@ -15,5 +15,9 @@
     "^.+\\.(t|j)s$": "ts-jest"
   },
   "forceExit": true,
-  "maxWorkers": 1
+  "maxWorkers": 1,
+  "setupFiles": [
+    "<rootDir>/support/e2e-database.setup.ts"
+  ],
+  "globalSetup": "<rootDir>/support/e2e-database.global-setup.ts"
 }

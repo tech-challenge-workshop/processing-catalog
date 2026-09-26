@@ -286,14 +286,16 @@ T9 -> T10
 
 **Done when**:
 
-- [ ] On an empty server, the e2e run creates `fiapx_e2e` and passes with 0 skipped
-- [ ] With the platform stack up: the number of rows in `fiapx`'s `catalog.outbox` before and after a full e2e run is equal
-- [ ] `DATABASE_NAME=fiapx npm run test:e2e` fails before any suite runs, naming the variable
-- [ ] CI still passes (the workflow needs no change; confirm the service's admin credentials)
-- [ ] Full gate passes
+- [x] On an empty server, the e2e run creates `fiapx_e2e` and passes with 0 skipped
+- [x] With the platform stack up: the number of rows in `fiapx`'s `catalog.outbox` before and after a full e2e run is equal
+- [x] `DATABASE_NAME=fiapx npm run test:e2e` fails before any suite runs, naming the variable
+- [~] CI still passes (the workflow needs no change; confirm the service's admin credentials)
+- [x] Full gate passes
 
 **Tests**: integration
 **Gate**: full
+
+**Status**: ✅ Complete, with one deviation. `test/support/e2e-database-name.ts` holds the rule (`fiapx_e2e` when only a host is set, an explicit other name kept, `fiapx` refused with `e2e suites must not run against the stack's database (DATABASE_NAME=fiapx)`); `e2e-database.setup.ts` (`setupFiles`) applies it in each worker, and `e2e-database.global-setup.ts` (`globalSetup`) applies it first, so a refused name stops the run before any suite, then creates the database `OWNER catalog` when absent and `CREATE SCHEMA IF NOT EXISTS catalog AUTHORIZATION catalog` in it, as `DATABASE_ADMIN_USER`/`DATABASE_ADMIN_PASSWORD` (default `postgres`/`postgres`) through TypeORM (the repository has no `@types/pg`). The rule lives in its own module because a suite importing the setup file applied it as a side effect and hid a missing wiring. **Suites that name `fiapx`**: none; every DB suite goes through `buildDataSourceOptions()`, and `app`/`local-docker-integration` clear `DATABASE_*` for the in-memory composition. New `test/e2e-database.e2e-spec.ts` (6 tests, seen red first: module absent): the rule's five cases, and a DB-guarded check that `current_database()` equals the resolved name and is not `fiapx`. Negatives: the refusal removed → 2 red; both hooks removed → the connection test red (removing only `setupFiles` stays green, because the global setup's `process.env` reaches the workers: the same rule applied once). Proof on a fresh container: `fiapx_e2e` absent before, created by the run, 0 skipped; `fiapx` migrated and seeded with one outbox row, 1 row before and 1 after the full e2e run (the e2e database held 11); `DATABASE_NAME=fiapx npm run test:e2e` exits 1 from the global setup, naming the variable. **Deviation (CI)**: the workflow set `DATABASE_NAME: fiapx`, which the harness now refuses, so that line is removed (with a comment); the service's credentials are `postgres`/`postgres`, the harness's defaults, so no `DATABASE_ADMIN_*` is needed. **Open**: CI itself has not run (local commits only). Build gate on a fresh container: lint, typecheck, 227 unit, 162 e2e (156 + 6), build; 0 skipped.
 
 ---
 
