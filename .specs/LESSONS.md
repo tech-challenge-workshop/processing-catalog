@@ -20,6 +20,18 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: spec.md:48 - edge case unsupported status transition has no test (domain)
 - last seen: 2026-08-27T23:35:46Z
 
+### L-002 - When a field is present iff a status, specify the outcome for rows whose supporting column is null or add a database constraint that forbids them
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · harmful: 0
+- features: auth-owner-scope
+- evidence: src/application/owned-item.ts:40
+- last seen: 2026-09-26T03:43:02Z
+
+### L-003 - When a spec validates an identifier after trimming, also state whether the trimmed or raw value is used in the query
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · harmful: 0
+- features: auth-owner-scope
+- evidence: src/interface/owned-processing-requests.controller.ts:80
+- last seen: 2026-09-26T03:43:02Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

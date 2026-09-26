@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 2,
+  "next_id": 4,
   "lessons": [
     {
       "id": "L-001",
@@ -22,6 +22,42 @@
       ],
       "created": "2026-08-27T23:35:46Z",
       "last_seen": "2026-08-27T23:35:46Z"
+    },
+    {
+      "id": "L-002",
+      "key": "spec_precision_gap::when a field is present iff a status specify the outcome for rows whose supporting column is null or add a database constraint that forbids them",
+      "text": "When a field is present iff a status, specify the outcome for rows whose supporting column is null or add a database constraint that forbids them",
+      "signal": "spec_precision_gap",
+      "scope": "",
+      "status": "candidate",
+      "features": [
+        "auth-owner-scope"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "src/application/owned-item.ts:40"
+      ],
+      "created": "2026-09-26T03:43:02Z",
+      "last_seen": "2026-09-26T03:43:02Z"
+    },
+    {
+      "id": "L-003",
+      "key": "spec_precision_gap::when a spec validates an identifier after trimming also state whether the trimmed or raw value is used in the query",
+      "text": "When a spec validates an identifier after trimming, also state whether the trimmed or raw value is used in the query",
+      "signal": "spec_precision_gap",
+      "scope": "",
+      "status": "candidate",
+      "features": [
+        "auth-owner-scope"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "src/interface/owned-processing-requests.controller.ts:80"
+      ],
+      "created": "2026-09-26T03:43:02Z",
+      "last_seen": "2026-09-26T03:43:02Z"
     }
   ]
 }
