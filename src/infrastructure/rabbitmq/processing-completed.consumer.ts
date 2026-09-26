@@ -31,6 +31,7 @@ export class ProcessingCompletedConsumer implements OnModuleInit {
     await this.useCase.execute({
       eventId: parsed.eventId,
       processingRequestId: parsed.processingRequestId,
+      attemptId: parsed.attemptId,
       zipStorageKey: parsed.zipStorageKey,
       occurredAt: parsed.occurredAt,
     });
@@ -47,7 +48,8 @@ export class ProcessingCompletedConsumer implements OnModuleInit {
       !('eventId' in content) ||
       !('processingRequestId' in content) ||
       !('zipStorageKey' in content) ||
-      !('occurredAt' in content)
+      !('occurredAt' in content) ||
+      !hasAttemptId(content)
     ) {
       throw new ProcessingRequestDomainError(
         'Invalid ProcessingCompleted payload',
@@ -59,8 +61,19 @@ export class ProcessingCompletedConsumer implements OnModuleInit {
     return {
       eventId: String(payload.eventId),
       processingRequestId: String(payload.processingRequestId),
+      attemptId: payload.attemptId as string,
       zipStorageKey: String(payload.zipStorageKey),
       occurredAt: String(payload.occurredAt),
     };
   }
+}
+
+/**
+ * A completion names the attempt that produced its archive; without one the
+ * Catalog cannot tell a current completion from a stale one, so the message
+ * is malformed rather than retried.
+ */
+function hasAttemptId(content: object): boolean {
+  const attemptId = (content as Record<string, unknown>).attemptId;
+  return typeof attemptId === 'string' && attemptId.trim().length > 0;
 }

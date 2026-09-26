@@ -60,6 +60,7 @@ describe('ProcessingCompletedConsumer', () => {
     const content = JSON.stringify({
       eventId: 'processing-completed-1',
       processingRequestId: request.processingRequestId,
+      attemptId: request.attemptId,
       zipStorageKey: 'zips/output.zip',
       occurredAt: new Date().toISOString(),
     });
@@ -78,6 +79,7 @@ describe('ProcessingCompletedConsumer', () => {
     const content = JSON.stringify({
       eventId: 'processing-completed-2',
       processingRequestId: request.processingRequestId,
+      attemptId: request.attemptId,
       zipStorageKey: 'zips/output.zip',
       occurredAt: new Date().toISOString(),
     });
@@ -104,6 +106,7 @@ describe('ProcessingCompletedConsumer', () => {
       JSON.stringify({
         eventId: 'processing-completed-4',
         processingRequestId: request.processingRequestId,
+        attemptId: request.attemptId,
         zipStorageKey: 'zips/output.zip',
         occurredAt: new Date().toISOString(),
       }),
@@ -114,6 +117,7 @@ describe('ProcessingCompletedConsumer', () => {
         JSON.stringify({
           eventId: 'processing-completed-5',
           processingRequestId: request.processingRequestId,
+          attemptId: request.attemptId,
           zipStorageKey: 'zips/output2.zip',
           occurredAt: new Date().toISOString(),
         }),
@@ -132,10 +136,108 @@ describe('ProcessingCompletedConsumer', () => {
         JSON.stringify({
           eventId: 'processing-completed-6',
           processingRequestId: request.processingRequestId,
+          attemptId: request.attemptId,
           zipStorageKey: 'zips/output.zip',
           occurredAt: new Date().toISOString(),
         }),
       ),
     ).rejects.toThrow('outbox write failed');
+  });
+
+  describe('attemptId', () => {
+    /**
+     * Delivers one message through the consumer's real channel callback and
+     * waits until it is settled.
+     */
+    const deliver = async (body: unknown) => {
+      let handler: ((message: unknown) => void) | undefined;
+      const channel = {
+        consume: jest.fn((_queue: string, h: (message: unknown) => void) => {
+          handler = h;
+          return Promise.resolve();
+        }),
+        ack: jest.fn(),
+        nack: jest.fn(),
+      };
+      await new ProcessingCompletedConsumer(
+        { getConsumeChannel: () => channel } as never,
+        useCase,
+      ).onModuleInit();
+      const message = { content: Buffer.from(JSON.stringify(body)) };
+      handler!(message);
+      for (
+        let i = 0;
+        i < 100 &&
+        channel.ack.mock.calls.length + channel.nack.mock.calls.length === 0;
+        i++
+      ) {
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+      return { channel, message };
+    };
+
+    it('hands the attemptId to the use case', async () => {
+      const request = await createQueuedRequest();
+      const execute = jest.spyOn(useCase, 'execute');
+
+      await consumer.handleMessage(
+        JSON.stringify({
+          eventId: 'processing-completed-7',
+          processingRequestId: request.processingRequestId,
+          attemptId: request.attemptId,
+          zipStorageKey: 'zips/output.zip',
+          occurredAt: '2026-09-20T00:00:00Z',
+        }),
+      );
+
+      expect(execute).toHaveBeenCalledWith({
+        eventId: 'processing-completed-7',
+        processingRequestId: request.processingRequestId,
+        attemptId: request.attemptId,
+        zipStorageKey: 'zips/output.zip',
+        occurredAt: '2026-09-20T00:00:00Z',
+      });
+    });
+
+    it.each<[string, Record<string, unknown>]>([
+      ['no attemptId', {}],
+      ['an empty attemptId', { attemptId: '' }],
+      ['a whitespace attemptId', { attemptId: '   ' }],
+      ['a null attemptId', { attemptId: null }],
+    ])(
+      'dead-letters a completion with %s without calling the use case',
+      async (_case, attempt) => {
+        const request = await createQueuedRequest();
+        const execute = jest.spyOn(useCase, 'execute');
+        const body = {
+          eventId: 'processing-completed-8',
+          processingRequestId: request.processingRequestId,
+          zipStorageKey: 'zips/output.zip',
+          occurredAt: new Date().toISOString(),
+          ...attempt,
+        };
+
+        await expect(
+          consumer.handleMessage(JSON.stringify(body)),
+        ).rejects.toThrow(
+          new ProcessingRequestDomainError(
+            'Invalid ProcessingCompleted payload',
+          ),
+        );
+        const { channel, message } = await deliver(body);
+
+        expect(channel.nack).toHaveBeenCalledWith(message, false, false);
+        expect(channel.ack).not.toHaveBeenCalled();
+        expect(execute).not.toHaveBeenCalled();
+        expect(
+          (
+            await repository.findByProcessingRequestId(
+              request.processingRequestId,
+            )
+          )?.status,
+        ).toBe('PROCESSING');
+        expect(outbox.recordedTerminalEvents).toHaveLength(0);
+      },
+    );
   });
 });

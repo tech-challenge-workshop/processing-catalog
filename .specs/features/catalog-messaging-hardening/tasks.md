@@ -226,12 +226,14 @@ T9 -> T10
 
 **Done when**:
 
-- [ ] A message without `attemptId` is nacked without requeue, and the use case is not called
-- [ ] Near-miss: an empty `attemptId` is treated the same way
-- [ ] Quick gate passes
+- [x] A message without `attemptId` is nacked without requeue, and the use case is not called
+- [x] Near-miss: an empty `attemptId` is treated the same way
+- [x] Quick gate passes
 
 **Tests**: unit
 **Gate**: quick
+
+**Status**: ✅ Complete. The consumer requires a non-blank string `attemptId` and hands it to the use case (`CompleteProcessingRequestInput.attemptId` is optional until T7 compares it). Five new tests in `processing-completed.consumer.spec.ts` (seen red first): the `attemptId` handed over, and missing, empty, whitespace-only and `null` values each dead-lettered through the real channel callback (nack without requeue, no ack) with the use case not called and the request still PROCESSING. The five existing payloads now carry the request's `attemptId`; no assertion changed. Negatives: no check → 4 red; a presence-only check → 3 red; `attemptId` not passed → 1 red. Quick gate 218 passed (213 + 5), 0 skipped. The quick gate does not run `test/local-docker-integration.e2e-spec.ts`, whose four `processing.completed` deliveries carried no `attemptId`: the happy path went red and the replay test passed only because its completion was dead-lettered. They now carry the queued attempt (a random one for the RECEIVED case); e2e 154 passed, 0 skipped.
 
 ---
 
