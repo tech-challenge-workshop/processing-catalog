@@ -196,3 +196,32 @@ export function failProcessingRequest(
     updatedAt: now,
   };
 }
+
+/**
+ * A video refused by validation. Validation runs before the video is
+ * accepted, so only a RECEIVED request can be rejected: a rejection for a
+ * request that already has an attempt contradicts that attempt and is refused.
+ */
+export function rejectProcessingRequest(
+  request: ProcessingRequest,
+  failureCode: FailureCode,
+): ProcessingRequest {
+  if (request.status !== ProcessingRequestStatus.RECEIVED) {
+    throw new ProcessingRequestDomainError(
+      `Cannot reject request in ${request.status} status`,
+    );
+  }
+  if (!isFailureCode(failureCode)) {
+    throw new ProcessingRequestDomainError(
+      `Unknown failure code ${String(failureCode)}`,
+    );
+  }
+
+  const now = new Date();
+  return {
+    ...request,
+    status: ProcessingRequestStatus.FAILED,
+    failureCode,
+    updatedAt: now,
+  };
+}

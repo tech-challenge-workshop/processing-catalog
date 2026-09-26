@@ -172,12 +172,14 @@ T9 -> T10
 
 **Done when**:
 
-- [ ] Unit: every status × `rejectProcessingRequest`, checking both the accepted and the refused cases
-- [ ] No existing test changes
-- [ ] Quick gate passes (unit, domain)
+- [x] Unit: every status × `rejectProcessingRequest`, checking both the accepted and the refused cases
+- [x] No existing test changes
+- [x] Quick gate passes (unit, domain)
 
 **Tests**: unit
 **Gate**: quick
+
+**Status**: ✅ Complete. Six new tests in `src/domain/processing-request.spec.ts`: RECEIVED is rejected (FAILED, code stored, no attempt), QUEUED/PROCESSING/COMPLETED/FAILED are refused with `Cannot reject request in <status> status` and left unchanged, and a code outside the vocabulary is refused. Seen red first (function absent). Negative: dropping the RECEIVED guard turns the four refusal cases red. No existing test changed. Quick gate 201 passed (195 + 6), 0 skipped.
 
 ---
 
