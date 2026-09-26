@@ -14,12 +14,28 @@ export class DuplicateIdempotencyKeyError extends Error {
 }
 
 /**
+ * Raised by `save` when the owner already has a request for the same source,
+ * whatever its key. One upload is one request; PostgreSQL enforces it with
+ * `uq_processing_request_owner_source`, the in-memory adapter by hand.
+ */
+export class DuplicateSourceError extends Error {
+  constructor(ownerUserId: string, sourceStorageKey: string) {
+    super(
+      `Owner ${ownerUserId} already has a request for source ${sourceStorageKey}`,
+    );
+  }
+}
+
+/**
  * Asynchronous because the real implementation is PostgreSQL. A synchronous
  * signature over a database would be a lie about what the call does, and the
  * in-memory adapter honours the same shape so the two stay interchangeable.
  */
 export interface ProcessingRequestRepository {
-  /** @throws DuplicateIdempotencyKeyError on a taken (owner, key) pair. */
+  /**
+   * @throws DuplicateIdempotencyKeyError on a taken (owner, key) pair.
+   * @throws DuplicateSourceError on a taken (owner, source) pair.
+   */
   save(request: ProcessingRequest): Promise<void>;
   update(request: ProcessingRequest): Promise<void>;
   findByProcessingRequestId(
@@ -62,5 +78,9 @@ export interface ProcessingRequestRepository {
   findByOwnerAndIdempotencyKey(
     ownerUserId: string,
     idempotencyKey: string,
+  ): Promise<ProcessingRequest | undefined>;
+  findByOwnerAndSource(
+    ownerUserId: string,
+    sourceStorageKey: string,
   ): Promise<ProcessingRequest | undefined>;
 }

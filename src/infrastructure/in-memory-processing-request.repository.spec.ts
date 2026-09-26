@@ -3,16 +3,20 @@ import {
   acceptProcessingRequest,
   createProcessingRequest,
 } from '../domain/processing-request';
-import { DuplicateIdempotencyKeyError } from '../domain/processing-request.repository';
+import {
+  DuplicateIdempotencyKeyError,
+  DuplicateSourceError,
+} from '../domain/processing-request.repository';
 import { InMemoryProcessingRequestRepository } from './in-memory-processing-request.repository';
 
 function keyed(
   ownerUserId: string,
   idempotencyKey: string | undefined,
+  sourceStorageKey = `sources/${ownerUserId}/video.mp4`,
 ): ProcessingRequest {
   return createProcessingRequest({
     ownerUserId,
-    sourceStorageKey: `sources/${ownerUserId}/video.mp4`,
+    sourceStorageKey,
     idempotencyKey,
   });
 }
@@ -26,9 +30,12 @@ function ownedBy(
     ownerUserId,
     sourceStorageKey: 'videos/input.mp4',
   });
+  const id = processingRequestId ?? request.processingRequestId;
   return {
     ...request,
-    processingRequestId: processingRequestId ?? request.processingRequestId,
+    processingRequestId: id,
+    // One source per request: an owner holds one request per source.
+    sourceStorageKey: `videos/${id}.mp4`,
     createdAt,
     updatedAt: createdAt,
   };
@@ -263,12 +270,85 @@ describe('InMemoryProcessingRequestRepository', () => {
     });
 
     it('lets requests without a key coexist for one owner, like NULLs in the unique index', async () => {
-      const first = keyed('alice', undefined);
-      const second = keyed('alice', undefined);
+      const first = keyed('alice', undefined, 'sources/alice/a.mp4');
+      const second = keyed('alice', undefined, 'sources/alice/b.mp4');
       await repository.save(first);
       await repository.save(second);
 
       await expect(repository.countByOwner('alice')).resolves.toBe(2);
+    });
+  });
+
+  describe('sources', () => {
+    it("finds the owner's request by its source", async () => {
+      const request = keyed('alice', 'key-1', 'sources/alice/a.mp4');
+      await repository.save(request);
+
+      await expect(
+        repository.findByOwnerAndSource('alice', 'sources/alice/a.mp4'),
+      ).resolves.toBe(request);
+    });
+
+    it("does not find another owner's request under the same source", async () => {
+      await repository.save(keyed('alice', 'key-1', 'sources/shared.mp4'));
+
+      await expect(
+        repository.findByOwnerAndSource('bob', 'sources/shared.mp4'),
+      ).resolves.toBeUndefined();
+    });
+
+    it('does not find an unused source', async () => {
+      await repository.save(keyed('alice', 'key-1', 'sources/alice/a.mp4'));
+
+      await expect(
+        repository.findByOwnerAndSource('alice', 'sources/alice/b.mp4'),
+      ).resolves.toBeUndefined();
+    });
+
+    it('raises DuplicateSourceError on a second save with the same owner and source under another key, and keeps the first', async () => {
+      const first = keyed('alice', 'key-1', 'sources/alice/a.mp4');
+      const second = keyed('alice', 'key-2', 'sources/alice/a.mp4');
+      await repository.save(first);
+
+      await expect(repository.save(second)).rejects.toBeInstanceOf(
+        DuplicateSourceError,
+      );
+      await expect(
+        repository.findByProcessingRequestId(second.processingRequestId),
+      ).resolves.toBeUndefined();
+      await expect(
+        repository.findByOwnerAndSource('alice', 'sources/alice/a.mp4'),
+      ).resolves.toBe(first);
+    });
+
+    it('raises DuplicateSourceError when both requests for one source have no key', async () => {
+      const first = keyed('alice', undefined, 'sources/alice/a.mp4');
+      const second = keyed('alice', undefined, 'sources/alice/a.mp4');
+      await repository.save(first);
+
+      await expect(repository.save(second)).rejects.toBeInstanceOf(
+        DuplicateSourceError,
+      );
+      await expect(repository.countByOwner('alice')).resolves.toBe(1);
+    });
+
+    it('raises DuplicateIdempotencyKeyError, not DuplicateSourceError, when both the key and the source are taken', async () => {
+      await repository.save(keyed('alice', 'key-1', 'sources/alice/a.mp4'));
+
+      await expect(
+        repository.save(keyed('alice', 'key-1', 'sources/alice/a.mp4')),
+      ).rejects.toBeInstanceOf(DuplicateIdempotencyKeyError);
+    });
+
+    it('saves the same source for another owner', async () => {
+      const alices = keyed('alice', 'key-1', 'sources/shared.mp4');
+      const bobs = keyed('bob', 'key-1', 'sources/shared.mp4');
+      await repository.save(alices);
+
+      await expect(repository.save(bobs)).resolves.toBeUndefined();
+      await expect(
+        repository.findByOwnerAndSource('bob', 'sources/shared.mp4'),
+      ).resolves.toBe(bobs);
     });
   });
 });

@@ -106,12 +106,14 @@ T5
 
 **Done when**:
 
-- [ ] The lookup is owner-scoped: another owner's source finds nothing
-- [ ] In memory, saving a second request for one owner and source raises `DuplicateSourceError`, including when the keys are `NULL`; the duplicate-key case still raises `DuplicateIdempotencyKeyError`
-- [ ] Quick gate passes. `tsc` may be red until T3, because the TypeORM adapter must implement the new method; this is recorded in the task status, as in S6
+- [x] The lookup is owner-scoped: another owner's source finds nothing
+- [x] In memory, saving a second request for one owner and source raises `DuplicateSourceError`, including when the keys are `NULL`; the duplicate-key case still raises `DuplicateIdempotencyKeyError`
+- [x] Quick gate passes. `tsc` may be red until T3, because the TypeORM adapter must implement the new method; this is recorded in the task status, as in S6
 
 **Tests**: unit
 **Gate**: quick
+
+**Status**: ✅ Complete. Quick gate green: unit 168 → 175. `DuplicateSourceError` is declared next to `DuplicateIdempotencyKeyError` in `src/domain/processing-request.repository.ts`. The in-memory `save` checks the key first, then the source, so a request that takes both still raises `DuplicateIdempotencyKeyError`, as the key check stays first in the use case. `tsc` stays red until T3 implements `findByOwnerAndSource` in the TypeORM adapter. Fixtures that saved several requests for one owner and one source now give each its own source; no assertion changed: `in-memory-processing-request.repository.spec.ts` (`ownedBy`, and the keyless-coexistence test passes two sources through a new optional `keyed` argument) and `list-owned-processing-requests.query.spec.ts` (`ownedBy`).
 
 ---
 

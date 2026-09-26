@@ -1,6 +1,7 @@
 import { ProcessingRequest } from '../domain/processing-request';
 import {
   DuplicateIdempotencyKeyError,
+  DuplicateSourceError,
   ProcessingRequestRepository,
 } from '../domain/processing-request.repository';
 
@@ -14,18 +15,22 @@ export class InMemoryProcessingRequestRepository implements ProcessingRequestRep
   private eventIdToRequestId = new Map<string, string>();
 
   /**
-   * Enforces the unique (owner, key) index PostgreSQL has, with the same
-   * error, so the use case behaves alike over both adapters. A request with
-   * no key never collides, as NULLs never do in the index.
+   * Enforces the unique (owner, key) and (owner, source) indexes PostgreSQL
+   * has, with the same errors, so the use case behaves alike over both
+   * adapters. A request with no key never collides on the key, as NULLs
+   * never do in that index; the source collides whatever the key.
    */
   save(request: ProcessingRequest): Promise<void> {
     const key = request.idempotencyKey;
-    if (
-      key !== undefined &&
-      this.ownedBy(request.ownerUserId).some((r) => r.idempotencyKey === key)
-    ) {
+    const owned = this.ownedBy(request.ownerUserId);
+    if (key !== undefined && owned.some((r) => r.idempotencyKey === key)) {
       return Promise.reject(
         new DuplicateIdempotencyKeyError(request.ownerUserId, key),
+      );
+    }
+    if (owned.some((r) => r.sourceStorageKey === request.sourceStorageKey)) {
+      return Promise.reject(
+        new DuplicateSourceError(request.ownerUserId, request.sourceStorageKey),
       );
     }
     this.requests.set(request.processingRequestId, request);
@@ -109,6 +114,17 @@ export class InMemoryProcessingRequestRepository implements ProcessingRequestRep
     return Promise.resolve(
       this.ownedBy(ownerUserId).find(
         (r) => r.idempotencyKey === idempotencyKey,
+      ),
+    );
+  }
+
+  findByOwnerAndSource(
+    ownerUserId: string,
+    sourceStorageKey: string,
+  ): Promise<ProcessingRequest | undefined> {
+    return Promise.resolve(
+      this.ownedBy(ownerUserId).find(
+        (r) => r.sourceStorageKey === sourceStorageKey,
       ),
     );
   }
