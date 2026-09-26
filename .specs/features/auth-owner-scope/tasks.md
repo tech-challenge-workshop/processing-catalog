@@ -121,12 +121,13 @@ T4 -> T5
 - Skill: NONE
 
 **Done when**:
-- [ ] After `runMigrations`, `pg_indexes` shows the new index and not the old one; after reverting it, the reverse
-- [ ] Running the migrations twice leaves nothing pending
-- [ ] Build gate passes
+- [x] After `runMigrations`, `pg_indexes` shows the new index and not the old one; after reverting it, the reverse
+- [x] Running the migrations twice leaves nothing pending
+- [x] Build gate passes
 
 **Tests**: integration
 **Gate**: build
+**Status**: ✅ Complete. Build gate green: lint, typecheck, unit 128, e2e 50 → 53 with 0 skipped, build. `fiap-x-platform/db/create-database.sql` must be regenerated in the platform tasks.
 
 ---
 
