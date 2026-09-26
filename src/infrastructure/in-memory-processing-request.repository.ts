@@ -55,4 +55,47 @@ export class InMemoryProcessingRequestRepository implements ProcessingRequestRep
   hasEventBeenProcessed(eventId: string): Promise<boolean> {
     return Promise.resolve(this.eventIdToRequestId.has(eventId));
   }
+
+  findPageByOwner(
+    ownerUserId: string,
+    offset: number,
+    limit: number,
+  ): Promise<ProcessingRequest[]> {
+    const page = this.ownedBy(ownerUserId)
+      .sort(
+        (a, b) =>
+          b.createdAt.getTime() - a.createdAt.getTime() ||
+          compare(a.processingRequestId, b.processingRequestId),
+      )
+      .slice(offset, offset + limit);
+    return Promise.resolve(page);
+  }
+
+  countByOwner(ownerUserId: string): Promise<number> {
+    return Promise.resolve(this.ownedBy(ownerUserId).length);
+  }
+
+  findByIdAndOwner(
+    processingRequestId: string,
+    ownerUserId: string,
+  ): Promise<ProcessingRequest | undefined> {
+    const request = this.requests.get(processingRequestId);
+    return Promise.resolve(
+      request?.ownerUserId === ownerUserId ? request : undefined,
+    );
+  }
+
+  private ownedBy(ownerUserId: string): ProcessingRequest[] {
+    return [...this.requests.values()].filter(
+      (r) => r.ownerUserId === ownerUserId,
+    );
+  }
+}
+
+/**
+ * Plain code-unit order. For lowercase canonical UUIDs it matches the
+ * byte order PostgreSQL uses for the `uuid` type, so both adapters page alike.
+ */
+function compare(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
 }

@@ -27,4 +27,22 @@ export interface ProcessingRequestRepository {
     processingRequestId?: string,
   ): Promise<void>;
   hasEventBeenProcessed(eventId: string): Promise<boolean>;
+  /**
+   * The owner-scoped reads. Each takes the owner and filters on it in the
+   * query itself: there is deliberately no method that lists without one, so
+   * an unscoped read cannot be written by accident.
+   *
+   * Ordered by `createdAt` descending, then `processingRequestId` ascending,
+   * so the order is total and offset pages never repeat or skip a row.
+   */
+  findPageByOwner(
+    ownerUserId: string,
+    offset: number,
+    limit: number,
+  ): Promise<ProcessingRequest[]>;
+  countByOwner(ownerUserId: string): Promise<number>;
+  findByIdAndOwner(
+    processingRequestId: string,
+    ownerUserId: string,
+  ): Promise<ProcessingRequest | undefined>;
 }
