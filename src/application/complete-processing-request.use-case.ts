@@ -13,6 +13,8 @@ import type { ProcessingRequestRepository } from '../domain/processing-request.r
 export interface CompleteProcessingRequestInput {
   eventId: string;
   processingRequestId: string;
+  /** The attempt that produced the archive. */
+  attemptId?: string;
   zipStorageKey: string;
   occurredAt: string;
 }

@@ -251,6 +251,7 @@ describe('Local Docker Integration (e2e)', () => {
     fakeConnection.deliver('processing.completed', {
       eventId: 'processing-completed-1',
       processingRequestId: body.processingRequestId,
+      attemptId: queued!.attemptId,
       zipStorageKey: 'zips/output.zip',
       occurredAt: new Date().toISOString(),
     });
@@ -323,6 +324,7 @@ describe('Local Docker Integration (e2e)', () => {
     fakeConnection.deliver('processing.completed', {
       eventId: 'invalid-complete',
       processingRequestId: body.processingRequestId,
+      attemptId: randomUUID(),
       zipStorageKey: 'zips/output.zip',
       occurredAt: new Date().toISOString(),
     });
@@ -530,6 +532,7 @@ describe('Local Docker Integration (e2e)', () => {
     fakeConnection.deliver('processing.completed', {
       eventId: 'replay-completed',
       processingRequestId: body.processingRequestId,
+      attemptId: queued!.attemptId,
       zipStorageKey: 'zips/replay.zip',
       occurredAt: new Date().toISOString(),
     });
@@ -555,6 +558,7 @@ describe('Local Docker Integration (e2e)', () => {
     fakeConnection.deliver('processing.completed', {
       eventId: 'replay-completed',
       processingRequestId: body.processingRequestId,
+      attemptId: queued!.attemptId,
       zipStorageKey: 'zips/replay.zip',
       occurredAt: new Date().toISOString(),
     });

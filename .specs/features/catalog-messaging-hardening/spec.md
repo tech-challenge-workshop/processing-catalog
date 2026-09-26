@@ -153,7 +153,7 @@ Decisions of 2026-09-26 are in `context.md` beside this spec.
 | --- | --- | --- | --- |
 | MSG-01 | P1: One publication per row across replicas (V5) | Execute | Implementing |
 | MSG-02 | P1: Publish timeout; relay keeps retrying (V5) | Execute | Implementing |
-| MSG-03 | P2: Stale `attemptId` is a no-op (V7) | Tasks | In Tasks |
+| MSG-03 | P2: Stale `attemptId` is a no-op (V7) | Execute | Implementing |
 | MSG-04 | P2: `VideoRejected` only from `RECEIVED` (V7) | Execute | Implementing |
 | MSG-05 | P2: `ProcessingFailed` never from `RECEIVED` (V7) | Execute | Implementing |
 | MSG-06 | P3: Blank backoff is the default (V13) | Execute | Implementing |
