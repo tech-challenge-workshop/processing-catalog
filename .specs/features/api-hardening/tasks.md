@@ -193,14 +193,16 @@ T5
 
 **Done when**:
 
-- [ ] A 256-character key → `400 idempotencyKey must be at most 255 characters`; a 255-character key → `201`
-- [ ] A number, an array, an object and `true` for each of the three fields → `400 <field> must be a string`. The near-miss inputs are a numeric string (accepted) and `null` (`<field> is required`)
-- [ ] Every S6 message is unchanged: missing, empty and blank still give `<field> is required`
-- [ ] No row and no outbox entry after any of these `400`s
-- [ ] Build gate passes
+- [x] A 256-character key → `400 idempotencyKey must be at most 255 characters`; a 255-character key → `201`
+- [x] A number, an array, an object and `true` for each of the three fields → `400 <field> must be a string`. The near-miss inputs are a numeric string (accepted) and `null` (`<field> is required`)
+- [x] Every S6 message is unchanged: missing, empty and blank still give `<field> is required`
+- [x] No row and no outbox entry after any of these `400`s
+- [x] Build gate passes
 
 **Tests**: e2e
 **Gate**: build
+
+**Status**: ✅ Complete. Build gate green on a fresh container: lint, typecheck, unit 179, e2e 122 → 148 with 0 skipped, build. `validateDto` runs `requireString` per field (absent or `null` → `is required`, non-string → `must be a string`, blank → `is required`), then bounds the key at 255 characters (`String.length`, UTF-16 code units). All 26 new cases are in `test/create-processing-request-route.e2e-spec.ts` with the exact body `{message, error: 'Bad Request', statusCode: 400}`, and each counts rows and outbox entries under both the valid owner and the valid source, so a write under either is seen. Missing, empty and blank are added with their exact message for `ownerUserId` and `sourceStorageKey`; the key's were already covered by S6 and are not repeated. No existing test changed. Before the change, all 12 non-string cases and the 256-character case were red.
 
 ---
 
