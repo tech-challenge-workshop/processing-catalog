@@ -32,10 +32,11 @@ describe('ProcessingCompletedConsumer', () => {
       repository,
       unitOfWork,
     );
-    const request = await createUseCase.execute({
+    const { request } = await createUseCase.execute({
       eventId: 'create-event-1',
       ownerUserId: 'user-123',
       sourceStorageKey: 'videos/input.mp4',
+      idempotencyKey: 'create-key-1',
     });
     const acceptUseCase = new AcceptProcessingRequestUseCase(
       repository,

@@ -28,11 +28,13 @@ describe('VideoAcceptedConsumer', () => {
       repository,
       unitOfWork,
     );
-    return createUseCase.execute({
+    const { request } = await createUseCase.execute({
       eventId: 'create-event-1',
       ownerUserId: 'user-123',
       sourceStorageKey: 'videos/input.mp4',
+      idempotencyKey: 'create-key-1',
     });
+    return request;
   };
 
   it('processes a valid VideoAccepted event', async () => {

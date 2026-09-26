@@ -26,11 +26,13 @@ describe('AcceptProcessingRequestUseCase', () => {
       repository,
       unitOfWork,
     );
-    return createUseCase.execute({
+    const { request } = await createUseCase.execute({
       eventId: randomUUID(),
       ownerUserId: 'user-123',
       sourceStorageKey: 'videos/input.mp4',
+      idempotencyKey: randomUUID(),
     });
+    return request;
   };
 
   it('transitions a request from RECEIVED to QUEUED and publishes ProcessingQueued', async () => {

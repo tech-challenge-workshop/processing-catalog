@@ -147,13 +147,14 @@ T6
 - Skill: NONE
 
 **Done when**:
-- [ ] Unit: created → one save and one outbox entry; replay with same source → no write; other source → conflict, no write; blank key → domain error
-- [ ] PostgreSQL e2e: two concurrent creates with one owner and key → one row, one outbox entry, both results carry the same id; a third later → replayed, still one row and one outbox entry
-- [ ] Two owners with the same key string → two requests
-- [ ] Full gate passes, 0 skipped
+- [x] Unit: created → one save and one outbox entry; replay with same source → no write; other source → conflict, no write; blank key → domain error
+- [x] PostgreSQL e2e: two concurrent creates with one owner and key → one row, one outbox entry, both results carry the same id; a third later → replayed, still one row and one outbox entry
+- [x] Two owners with the same key string → two requests
+- [x] Full gate passes, 0 skipped
 
 **Tests**: integration
 **Gate**: full
+**Status**: ✅ Complete. Full gate green: unit 151 → 160, e2e 89 → 94 with 0 skipped. `test/idempotent-creation.e2e-spec.ts` runs the race three ways against PostgreSQL: two concurrent creates, a burst of eight, and a loser forced past the fast path. The forced loser asserts that its insert raised `DuplicateIdempotencyKeyError`. Disabling the catch-and-re-read turns the burst and forced-race tests red. The loser's transaction rolls back and the winner is re-read through the injected, non-transactional repository. The `eventId` dedup stays in front and now returns `replayed`. The controller keeps compiling with a transitional `idempotencyKey: randomUUID()` until T5. Existing unit specs that create a request now pass a key and unwrap `.request`; no assertion changed.
 
 ---
 
