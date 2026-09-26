@@ -116,12 +116,14 @@ T9 -> T10
 
 **Done when**:
 
-- [ ] Unit: a fake wrapper receives `timeout` 5000 by default, and the configured value when one is set
-- [ ] Parser cases as in T1
-- [ ] Quick gate passes
+- [x] Unit: a fake wrapper receives `timeout` 5000 by default, and the configured value when one is set
+- [x] Parser cases as in T1
+- [x] Quick gate passes
 
 **Tests**: unit
 **Gate**: quick
+
+**Status**: ✅ Complete. New `rabbitmq.connection.spec.ts` (9 tests), seen red before the change; dropping the option turns both wrapper tests red. `"0"` maps to 0 as in T1, which `amqp-connection-manager` reads as "no timeout" (documented beside the parser). Also carries a prettier-only reformat of T1's `parseNonNegativeMs`. Quick gate 195 passed, 0 skipped.
 
 ---
 

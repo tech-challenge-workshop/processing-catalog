@@ -16,9 +16,7 @@ export function parseNonNegativeMs(
     return fallback;
   }
   const configured = Number(raw);
-  return Number.isFinite(configured) && configured >= 0
-    ? configured
-    : fallback;
+  return Number.isFinite(configured) && configured >= 0 ? configured : fallback;
 }
 
 export function retryBackoffMs(): number {

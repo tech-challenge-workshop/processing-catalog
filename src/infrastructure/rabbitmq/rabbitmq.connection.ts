@@ -4,6 +4,7 @@ import {
   type AmqpConnectionManager,
   type ChannelWrapper,
 } from 'amqp-connection-manager';
+import { parseNonNegativeMs } from './settle-failed-message';
 
 export const RABBITMQ_EXCHANGE = 'fiapx.events';
 
@@ -38,6 +39,22 @@ export const RABBITMQ_QUEUES = [
 export type RabbitMQQueue = (typeof RABBITMQ_QUEUES)[number];
 
 export const DEFAULT_RABBITMQ_URL = 'amqp://rabbitmq:5672';
+
+export const DEFAULT_OUTBOX_PUBLISH_TIMEOUT_MS = 5000;
+
+/**
+ * How long a publish may wait for the broker's confirm. An unconfirmed publish
+ * is rejected and dropped from the wrapper's buffer, so the relay's drain ends
+ * and the row stays pending for the next tick instead of hanging forever.
+ * Blank, negative or non-numeric values mean the default. `0` is passed
+ * through, and `amqp-connection-manager` reads it as "no timeout".
+ */
+export function outboxPublishTimeoutMs(): number {
+  return parseNonNegativeMs(
+    process.env.OUTBOX_PUBLISH_TIMEOUT_MS,
+    DEFAULT_OUTBOX_PUBLISH_TIMEOUT_MS,
+  );
+}
 
 @Injectable()
 export class RabbitMQConnection implements OnModuleInit, OnModuleDestroy {
@@ -129,7 +146,11 @@ export class RabbitMQConnection implements OnModuleInit, OnModuleDestroy {
     event: unknown,
   ): Promise<void> {
     const channel = this.getPublishChannel();
-    await channel.sendToQueue(queue, { pattern, data: event });
+    await channel.sendToQueue(
+      queue,
+      { pattern, data: event },
+      { timeout: outboxPublishTimeoutMs() },
+    );
   }
 
   async onModuleDestroy(): Promise<void> {
