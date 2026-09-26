@@ -37,6 +37,21 @@ describe('ProcessingRequest', () => {
     ).toThrow('ownerUserId is required');
   });
 
+  it('carries the idempotency key it was created with, and none when absent', () => {
+    const keyed = createProcessingRequest({
+      ownerUserId: 'user-123',
+      sourceStorageKey: 'videos/input.mp4',
+      idempotencyKey: 'key-1',
+    });
+    const unkeyed = createProcessingRequest({
+      ownerUserId: 'user-123',
+      sourceStorageKey: 'videos/input.mp4',
+    });
+
+    expect(keyed.idempotencyKey).toBe('key-1');
+    expect(unkeyed.idempotencyKey).toBeUndefined();
+  });
+
   it('rejects creation when sourceStorageKey is missing', () => {
     expect(() =>
       createProcessingRequest({

@@ -27,6 +27,9 @@ export class ProcessingRequestEntity {
   @Column({ name: 'failure_code', type: 'text', nullable: true })
   failureCode: string | null;
 
+  @Column({ name: 'idempotency_key', type: 'text', nullable: true })
+  idempotencyKey: string | null;
+
   @Column({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 

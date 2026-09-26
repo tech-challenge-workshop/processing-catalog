@@ -33,6 +33,8 @@ export interface ProcessingRequest {
   attemptId: string | undefined;
   zipStorageKey: string | undefined;
   failureCode: FailureCode | undefined;
+  /** The owner's confirmation key. Absent on requests created before S6. */
+  idempotencyKey: string | undefined;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -40,6 +42,7 @@ export interface ProcessingRequest {
 export interface CreateProcessingRequestInput {
   ownerUserId: string;
   sourceStorageKey: string;
+  idempotencyKey?: string;
 }
 
 export class ProcessingRequestDomainError extends Error {}
@@ -63,6 +66,7 @@ export function createProcessingRequest(
     attemptId: undefined,
     zipStorageKey: undefined,
     failureCode: undefined,
+    idempotencyKey: input.idempotencyKey,
     createdAt: now,
     updatedAt: now,
   };

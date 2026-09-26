@@ -73,13 +73,14 @@ T6
 - Skill: NONE
 
 **Done when**:
-- [ ] After `runMigrations`, the column exists and `pg_indexes` shows `uq_processing_request_owner_idempotency`; after revert, neither
-- [ ] A pre-existing row with `NULL` key survives and does not block inserts; two `NULL`-key rows for one owner coexist
-- [ ] Running migrations twice leaves nothing pending
-- [ ] Full gate passes, 0 skipped
+- [x] After `runMigrations`, the column exists and `pg_indexes` shows `uq_processing_request_owner_idempotency`; after revert, neither
+- [x] A pre-existing row with `NULL` key survives and does not block inserts; two `NULL`-key rows for one owner coexist
+- [x] Running migrations twice leaves nothing pending
+- [x] Full gate passes, 0 skipped
 
 **Tests**: integration
 **Gate**: full
+**Status**: ✅ Complete. Full gate green: unit 144 → 145, e2e 79 → 85 with 0 skipped. New suite `test/idempotency-key-migration.e2e-spec.ts`. The mapping of the column in `typeorm-processing-request.repository.ts` ships here, because the column cannot be tested without it. `test/owner-index-migration.e2e-spec.ts` now steps back past later migrations before its "last executed is S5's" assertion, which is kept as it was. `owned-item.spec.ts` gains `idempotencyKey: undefined` in its fixture so it still compiles.
 
 ---
 
