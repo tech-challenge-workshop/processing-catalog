@@ -254,6 +254,78 @@ describeIfDatabase(
         expect(await written(body)).toEqual({ rows: 1, outbox: 1 });
       });
 
+      // Unique per run (the database outlives it) and padded to the exact
+      // length with random hex, which PostgreSQL cannot compress into a small
+      // index entry the way a repeated character would be.
+      const ofLength = (prefix: string, length: number) => {
+        let value = `${prefix}-`;
+        while (value.length < length) {
+          value += randomUUID().replace(/-/g, '');
+        }
+        return value.slice(0, length);
+      };
+
+      it('answers 400 to a 256-character ownerUserId, and writes nothing', async () => {
+        const body = validBody();
+
+        const res = await create({
+          ...body,
+          ownerUserId: ofLength('owner', 256),
+        });
+
+        expect(res.status).toBe(400);
+        expect(res.body).toStrictEqual(
+          badRequest('ownerUserId must be at most 255 characters'),
+        );
+        expect(await written(body)).toEqual({ rows: 0, outbox: 0 });
+      });
+
+      it('accepts a 255-character ownerUserId', async () => {
+        const body = {
+          ...validBody(),
+          ownerUserId: ofLength('owner', 255),
+        };
+
+        const res = await create(body);
+
+        expect(res.status).toBe(201);
+        expect((res.body as CreatedBody).ownerUserId).toBe(body.ownerUserId);
+        expect(await written(body)).toEqual({ rows: 1, outbox: 1 });
+      });
+
+      it.each([1025, 3000])(
+        'answers 400 to a %i-character sourceStorageKey, and writes nothing',
+        async (length) => {
+          const body = validBody();
+
+          const res = await create({
+            ...body,
+            sourceStorageKey: ofLength('sources/long', length),
+          });
+
+          expect(res.status).toBe(400);
+          expect(res.body).toStrictEqual(
+            badRequest('sourceStorageKey must be at most 1024 characters'),
+          );
+          expect(await written(body)).toEqual({ rows: 0, outbox: 0 });
+        },
+      );
+
+      it('accepts a 1024-character sourceStorageKey', async () => {
+        const body = {
+          ...validBody(),
+          sourceStorageKey: ofLength('sources/long', 1024),
+        };
+
+        const res = await create(body);
+
+        expect(res.status).toBe(201);
+        expect((res.body as CreatedBody).sourceStorageKey).toBe(
+          body.sourceStorageKey,
+        );
+        expect(await written(body)).toEqual({ rows: 1, outbox: 1 });
+      });
+
       it.each(
         FIELDS.flatMap((field) =>
           (
