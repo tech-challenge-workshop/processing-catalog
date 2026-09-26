@@ -12,7 +12,8 @@ function ownedBy(ownerUserId: string, createdAt: Date): ProcessingRequest {
   return {
     ...createProcessingRequest({
       ownerUserId,
-      sourceStorageKey: 'videos/input.mp4',
+      // One source per request: an owner holds one request per source.
+      sourceStorageKey: `videos/${createdAt.toISOString()}.mp4`,
     }),
     createdAt,
     updatedAt: createdAt,
