@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 6,
+  "next_id": 8,
   "lessons": [
     {
       "id": "L-001",
@@ -83,17 +83,55 @@
       "text": "A client-chosen token stored under a btree unique index needs a specified maximum length so an oversized value is a 400, not a 500.",
       "signal": "spec_precision_gap",
       "scope": "persistence",
+      "status": "confirmed",
+      "features": [
+        "upload-download",
+        "api-hardening"
+      ],
+      "recurrence": 2,
+      "harmful": 0,
+      "evidence": [
+        "src/infrastructure/persistence/migrations/1789956000000-AddIdempotencyKey.ts:16 (persistence)",
+        "src/infrastructure/persistence/migrations/1789957000000-UniqueOwnerSource.ts:13 (persistence)"
+      ],
+      "created": "2026-09-26T05:29:40Z",
+      "last_seen": "2026-09-26T13:56:10Z"
+    },
+    {
+      "id": "L-006",
+      "key": "surviving_mutant::when a spec fixes a validation order across fields add at least one test with two malformed fields",
+      "text": "When a spec fixes a validation order across fields, add at least one test with two malformed fields.",
+      "signal": "surviving_mutant",
+      "scope": "interface",
       "status": "candidate",
       "features": [
-        "upload-download"
+        "api-hardening"
       ],
       "recurrence": 1,
       "harmful": 0,
       "evidence": [
-        "src/infrastructure/persistence/migrations/1789956000000-AddIdempotencyKey.ts:16 (persistence)"
+        "src/interface/create-processing-request.controller.ts:75 (interface)"
       ],
-      "created": "2026-09-26T05:29:40Z",
-      "last_seen": "2026-09-26T05:29:40Z"
+      "created": "2026-09-26T13:56:10Z",
+      "last_seen": "2026-09-26T13:56:10Z"
+    },
+    {
+      "id": "L-007",
+      "key": "surviving_mutant::test the lost race branch where the re read finds nothing not only the branch where it finds the winner",
+      "text": "Test the lost-race branch where the re-read finds nothing, not only the branch where it finds the winner.",
+      "signal": "surviving_mutant",
+      "scope": "application",
+      "status": "candidate",
+      "features": [
+        "api-hardening"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "src/application/create-processing-request.use-case.ts:118 (application)"
+      ],
+      "created": "2026-09-26T13:56:10Z",
+      "last_seen": "2026-09-26T13:56:10Z"
     }
   ]
 }

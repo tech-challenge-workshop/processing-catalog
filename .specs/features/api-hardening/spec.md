@@ -85,9 +85,9 @@ Decisions of 2026-09-26 are in the API half's spec. V26 and V27 move here from s
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| HARD-09 | P1: One request per source (V32) | Execute | Implementing |
-| HARD-10 | P2: Key length bounded (V26) | Execute | Implementing |
-| HARD-11 | P2: Non-string fields rejected (V27) | Execute | Implementing |
+| HARD-09 | P1: One request per source (V32) | Validate | Implementing (open: V38, oversized sourceStorageKey is a 500 under the new index; V39, re-read-miss and PostgreSQL-level 409/NULL-key tests) |
+| HARD-10 | P2: Key length bounded (V26) | Validate | Verified |
+| HARD-11 | P2: Non-string fields rejected (V27) | Validate | Implementing (open: V39, cross-field validation order unpinned) |
 
 **ID format:** `[CATEGORY]-[NUMBER]`
 
