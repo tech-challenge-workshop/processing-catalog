@@ -1,5 +1,8 @@
 import { ProcessingRequest } from '../domain/processing-request';
-import { ProcessingRequestRepository } from '../domain/processing-request.repository';
+import {
+  DuplicateIdempotencyKeyError,
+  ProcessingRequestRepository,
+} from '../domain/processing-request.repository';
 
 /**
  * The unit-test adapter. It satisfies the asynchronous port without a
@@ -10,7 +13,21 @@ export class InMemoryProcessingRequestRepository implements ProcessingRequestRep
   private requests = new Map<string, ProcessingRequest>();
   private eventIdToRequestId = new Map<string, string>();
 
+  /**
+   * Enforces the unique (owner, key) index PostgreSQL has, with the same
+   * error, so the use case behaves alike over both adapters. A request with
+   * no key never collides, as NULLs never do in the index.
+   */
   save(request: ProcessingRequest): Promise<void> {
+    const key = request.idempotencyKey;
+    if (
+      key !== undefined &&
+      this.ownedBy(request.ownerUserId).some((r) => r.idempotencyKey === key)
+    ) {
+      return Promise.reject(
+        new DuplicateIdempotencyKeyError(request.ownerUserId, key),
+      );
+    }
     this.requests.set(request.processingRequestId, request);
     return Promise.resolve();
   }
@@ -82,6 +99,17 @@ export class InMemoryProcessingRequestRepository implements ProcessingRequestRep
     const request = this.requests.get(processingRequestId);
     return Promise.resolve(
       request?.ownerUserId === ownerUserId ? request : undefined,
+    );
+  }
+
+  findByOwnerAndIdempotencyKey(
+    ownerUserId: string,
+    idempotencyKey: string,
+  ): Promise<ProcessingRequest | undefined> {
+    return Promise.resolve(
+      this.ownedBy(ownerUserId).find(
+        (r) => r.idempotencyKey === idempotencyKey,
+      ),
     );
   }
 

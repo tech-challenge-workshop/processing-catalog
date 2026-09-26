@@ -1,11 +1,25 @@
 import { ProcessingRequest } from './processing-request';
 
 /**
+ * Raised by `save` when the owner already has a request under the same
+ * idempotency key. Both adapters raise it - PostgreSQL through its unique
+ * index - so the caller handles a lost race the same way everywhere.
+ */
+export class DuplicateIdempotencyKeyError extends Error {
+  constructor(ownerUserId: string, idempotencyKey: string) {
+    super(
+      `Owner ${ownerUserId} already has a request under idempotency key ${idempotencyKey}`,
+    );
+  }
+}
+
+/**
  * Asynchronous because the real implementation is PostgreSQL. A synchronous
  * signature over a database would be a lie about what the call does, and the
  * in-memory adapter honours the same shape so the two stay interchangeable.
  */
 export interface ProcessingRequestRepository {
+  /** @throws DuplicateIdempotencyKeyError on a taken (owner, key) pair. */
   save(request: ProcessingRequest): Promise<void>;
   update(request: ProcessingRequest): Promise<void>;
   findByProcessingRequestId(
@@ -44,5 +58,9 @@ export interface ProcessingRequestRepository {
   findByIdAndOwner(
     processingRequestId: string,
     ownerUserId: string,
+  ): Promise<ProcessingRequest | undefined>;
+  findByOwnerAndIdempotencyKey(
+    ownerUserId: string,
+    idempotencyKey: string,
   ): Promise<ProcessingRequest | undefined>;
 }

@@ -3,7 +3,19 @@ import {
   acceptProcessingRequest,
   createProcessingRequest,
 } from '../domain/processing-request';
+import { DuplicateIdempotencyKeyError } from '../domain/processing-request.repository';
 import { InMemoryProcessingRequestRepository } from './in-memory-processing-request.repository';
+
+function keyed(
+  ownerUserId: string,
+  idempotencyKey: string | undefined,
+): ProcessingRequest {
+  return createProcessingRequest({
+    ownerUserId,
+    sourceStorageKey: `sources/${ownerUserId}/video.mp4`,
+    idempotencyKey,
+  });
+}
 
 function ownedBy(
   ownerUserId: string,
@@ -191,6 +203,72 @@ describe('InMemoryProcessingRequestRepository', () => {
           'alice',
         ),
       ).toBeUndefined();
+    });
+  });
+
+  describe('idempotency keys', () => {
+    it("finds the owner's request by its key", async () => {
+      const request = keyed('alice', 'key-1');
+      await repository.save(request);
+
+      await expect(
+        repository.findByOwnerAndIdempotencyKey('alice', 'key-1'),
+      ).resolves.toBe(request);
+    });
+
+    it("does not find another owner's request under the same key", async () => {
+      await repository.save(keyed('alice', 'key-1'));
+
+      await expect(
+        repository.findByOwnerAndIdempotencyKey('bob', 'key-1'),
+      ).resolves.toBeUndefined();
+    });
+
+    it('does not find an unused key', async () => {
+      await repository.save(keyed('alice', 'key-1'));
+
+      await expect(
+        repository.findByOwnerAndIdempotencyKey('alice', 'key-2'),
+      ).resolves.toBeUndefined();
+    });
+
+    it('raises DuplicateIdempotencyKeyError on a second save with the same owner and key, and keeps the first', async () => {
+      const first = keyed('alice', 'key-1');
+      const second = keyed('alice', 'key-1');
+      await repository.save(first);
+
+      await expect(repository.save(second)).rejects.toBeInstanceOf(
+        DuplicateIdempotencyKeyError,
+      );
+      await expect(
+        repository.findByProcessingRequestId(second.processingRequestId),
+      ).resolves.toBeUndefined();
+      await expect(
+        repository.findByOwnerAndIdempotencyKey('alice', 'key-1'),
+      ).resolves.toBe(first);
+    });
+
+    it('saves the same key for another owner', async () => {
+      const alices = keyed('alice', 'key-1');
+      const bobs = keyed('bob', 'key-1');
+      await repository.save(alices);
+
+      await expect(repository.save(bobs)).resolves.toBeUndefined();
+      await expect(
+        repository.findByOwnerAndIdempotencyKey('bob', 'key-1'),
+      ).resolves.toBe(bobs);
+      await expect(
+        repository.findByOwnerAndIdempotencyKey('alice', 'key-1'),
+      ).resolves.toBe(alices);
+    });
+
+    it('lets requests without a key coexist for one owner, like NULLs in the unique index', async () => {
+      const first = keyed('alice', undefined);
+      const second = keyed('alice', undefined);
+      await repository.save(first);
+      await repository.save(second);
+
+      await expect(repository.countByOwner('alice')).resolves.toBe(2);
     });
   });
 });
