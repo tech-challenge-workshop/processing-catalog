@@ -195,12 +195,13 @@ T6
 - Skill: NONE
 
 **Done when**:
-- [ ] e2e against PostgreSQL: `COMPLETED` → `200 { zipStorageKey }` (exact key); owned but not completed → 409; another owner, random UUID, malformed id → the constant 404 body byte-identical
-- [ ] The owner-scoped list and read still carry no `zipStorageKey`
-- [ ] Build gate passes, 0 skipped
+- [x] e2e against PostgreSQL: `COMPLETED` → `200 { zipStorageKey }` (exact key); owned but not completed → 409; another owner, random UUID, malformed id → the constant 404 body byte-identical
+- [x] The owner-scoped list and read still carry no `zipStorageKey`
+- [x] Build gate passes, 0 skipped
 
 **Tests**: e2e
 **Gate**: build
+**Status**: ✅ Complete. Build gate green: lint, typecheck, unit 160 → 168, e2e 101 → 109 with 0 skipped, build. `src/application/get-owned-archive.query.ts` returns `ready | not-completed | not-found` and is registered in `app.module.ts`. The route answers 409 `{message: 'Processing request is not completed', error: 'Conflict', statusCode: 409}`. Every miss answers 404 with the same text as the item route's miss, and a blank owner gets 400 before any query. Spec-precision gap (L-002): a `COMPLETED` row with a NULL `zip_storage_key` cannot be produced by the domain. If one exists, it answers 409 as "no archive yet" rather than a 200 without a key. A unit test covers this.
 
 ---
 

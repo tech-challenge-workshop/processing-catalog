@@ -39,6 +39,7 @@ import { ProcessingRequestObservationController } from './interface/processing-r
 import { OwnedProcessingRequestsController } from './interface/owned-processing-requests.controller';
 import { ListOwnedProcessingRequestsQuery } from './application/list-owned-processing-requests.query';
 import { GetOwnedProcessingRequestQuery } from './application/get-owned-processing-request.query';
+import { GetOwnedArchiveQuery } from './application/get-owned-archive.query';
 
 const isLocalIntegration = () => process.env.LOCAL_INTEGRATION === 'true';
 
@@ -61,6 +62,7 @@ const isLocalIntegration = () => process.env.LOCAL_INTEGRATION === 'true';
     FailProcessingRequestUseCase,
     ListOwnedProcessingRequestsQuery,
     GetOwnedProcessingRequestQuery,
+    GetOwnedArchiveQuery,
     InMemoryProcessingRequestRepository,
     DatabaseHealthIndicator,
     InMemoryOutboxWriter,
