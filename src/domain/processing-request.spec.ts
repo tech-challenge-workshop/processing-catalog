@@ -1,10 +1,13 @@
 import {
+  ProcessingRequest,
+  ProcessingRequestDomainError,
   ProcessingRequestStatus,
   acceptProcessingRequest,
   completeProcessingRequest,
   failProcessingRequest,
   isFailureCode,
   isUnchanged,
+  rejectProcessingRequest,
   startProcessingRequest,
   createProcessingRequest,
 } from './processing-request';
@@ -308,6 +311,69 @@ describe('ProcessingRequest', () => {
         ),
       ).toThrow('Unknown failure code INVENTADO');
       expect(request.status).toBe(ProcessingRequestStatus.QUEUED);
+    });
+  });
+
+  describe('rejectProcessingRequest', () => {
+    it('rejects a RECEIVED request, records the code and opens no attempt', () => {
+      const request = received();
+
+      const rejected = rejectProcessingRequest(request, 'FORMATO_INVALIDO');
+
+      expect(rejected.status).toBe(ProcessingRequestStatus.FAILED);
+      expect(rejected.failureCode).toBe('FORMATO_INVALIDO');
+      expect(rejected.attemptId).toBeUndefined();
+      expect(rejected.updatedAt.getTime()).toBeGreaterThanOrEqual(
+        request.updatedAt.getTime(),
+      );
+      expect(request.status).toBe(ProcessingRequestStatus.RECEIVED);
+    });
+
+    it.each<[ProcessingRequestStatus, () => ProcessingRequest]>([
+      [ProcessingRequestStatus.QUEUED, () => queued()],
+      [
+        ProcessingRequestStatus.PROCESSING,
+        () => startProcessingRequest(queued()),
+      ],
+      [
+        ProcessingRequestStatus.COMPLETED,
+        () => completeProcessingRequest(queued(), 'zips/output.zip'),
+      ],
+      [
+        ProcessingRequestStatus.FAILED,
+        () => failProcessingRequest(queued(), 'DURACAO_EXCEDIDA'),
+      ],
+    ])('refuses a %s request and leaves it unchanged', (status, make) => {
+      const request = make();
+      const snapshot = { ...request };
+
+      expect(() =>
+        rejectProcessingRequest(request, 'FORMATO_INVALIDO'),
+      ).toThrow(
+        new ProcessingRequestDomainError(
+          `Cannot reject request in ${status} status`,
+        ),
+      );
+      expect(() =>
+        rejectProcessingRequest(request, 'FORMATO_INVALIDO'),
+      ).toThrow(ProcessingRequestDomainError);
+      expect(request).toEqual(snapshot);
+      expect(request.status).toBe(status);
+    });
+
+    it('refuses a code outside the vocabulary rather than storing it', () => {
+      const request = received();
+
+      expect(() =>
+        rejectProcessingRequest(
+          request,
+          'INVENTADO' as unknown as Parameters<
+            typeof rejectProcessingRequest
+          >[1],
+        ),
+      ).toThrow('Unknown failure code INVENTADO');
+      expect(request.status).toBe(ProcessingRequestStatus.RECEIVED);
+      expect(request.failureCode).toBeUndefined();
     });
   });
 
