@@ -151,15 +151,15 @@ Decisions of 2026-09-26 are in `context.md` beside this spec.
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| MSG-01 | P1: One publication per row across replicas (V5) | Execute | Implementing |
-| MSG-02 | P1: Publish timeout; relay keeps retrying (V5) | Execute | Implementing |
-| MSG-03 | P2: Stale `attemptId` is a no-op (V7) | Execute | Implementing |
-| MSG-04 | P2: `VideoRejected` only from `RECEIVED` (V7) | Execute | Implementing |
-| MSG-05 | P2: `ProcessingFailed` never from `RECEIVED` (V7) | Execute | Implementing |
-| MSG-06 | P3: Blank backoff is the default (V13) | Execute | Implementing |
-| MSG-07 | P4: e2e suites use `fiapx_e2e` | Execute | Implementing |
-| MSG-08 | P5: Field length bounds (V38) | Execute | Implementing |
-| MSG-09 | P5: Spec B test gaps (V39) | Execute | Implementing |
+| MSG-01 | P1: One publication per row across replicas (V5) | Validate | Implementing (open: V47, lock release untested) |
+| MSG-02 | P1: Publish timeout; relay keeps retrying (V5) | Validate | Implementing (open: V45, timeout 0 disables the timeout) |
+| MSG-03 | P2: Stale `attemptId` is a no-op (V7) | Validate | Implementing (open: V46, malformed attemptId acked on Started/Failed; V47, RECEIVED exemption to be written) |
+| MSG-04 | P2: `VideoRejected` only from `RECEIVED` (V7) | Validate | Verified |
+| MSG-05 | P2: `ProcessingFailed` never from `RECEIVED` (V7) | Validate | Implementing (open: V47, dedup/stale order untested in Fail) |
+| MSG-06 | P3: Blank backoff is the default (V13) | Validate | Verified |
+| MSG-07 | P4: e2e suites use `fiapx_e2e` | Validate | Verified |
+| MSG-08 | P5: Field length bounds (V38) | Validate | Verified |
+| MSG-09 | P5: Spec B test gaps (V39) | Validate | Verified |
 
 **ID format:** `[CATEGORY]-[NUMBER]`
 
