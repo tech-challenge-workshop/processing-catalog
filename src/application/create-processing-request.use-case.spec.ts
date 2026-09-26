@@ -10,6 +10,7 @@ import {
 import {
   ProcessingRequestDomainError,
   ProcessingRequestStatus,
+  createProcessingRequest,
 } from '../domain/processing-request';
 
 describe('CreateProcessingRequestUseCase', () => {
@@ -193,12 +194,90 @@ describe('CreateProcessingRequestUseCase', () => {
     it("returns the winner's request when its insert loses the race, and writes nothing", async () => {
       const winner = await useCase.execute(input());
       // The loser read before the winner committed, so its fast path saw
-      // no request and it went on to insert.
+      // no request and it went on to insert. It missed both lookups, the
+      // key's and the source's.
       jest
         .spyOn(repository, 'findByOwnerAndIdempotencyKey')
         .mockResolvedValueOnce(undefined);
+      jest
+        .spyOn(repository, 'findByOwnerAndSource')
+        .mockResolvedValueOnce(undefined);
 
       const loser = await useCase.execute(input());
+
+      expect(loser.outcome).toBe('replayed');
+      expect(loser.request.processingRequestId).toBe(
+        winner.request.processingRequestId,
+      );
+      await expect(repository.countByOwner('alice')).resolves.toBe(1);
+      expect(outbox.entries).toHaveLength(1);
+    });
+
+    it('replays a new key on a source the owner already has: the existing request, and nothing written', async () => {
+      const first = await useCase.execute(input());
+      const secondKey = input({ idempotencyKey: 'key-2' });
+      // The lookup answers it: no insert is even attempted.
+      const insert = jest.spyOn(repository, 'save');
+
+      const second = await useCase.execute(secondKey);
+
+      expect(insert).not.toHaveBeenCalled();
+      expect(second.outcome).toBe('replayed');
+      expect(second.request).toBe(first.request);
+      await expect(repository.countByOwner('alice')).resolves.toBe(1);
+      expect(outbox.entries).toHaveLength(1);
+      await expect(
+        repository.hasEventBeenProcessed(secondKey.eventId),
+      ).resolves.toBe(false);
+      await expect(
+        repository.findByOwnerAndIdempotencyKey('alice', 'key-2'),
+      ).resolves.toBeUndefined();
+    });
+
+    it('still rejects a key bound to another source as a conflict when the new source already has a request', async () => {
+      await useCase.execute(input());
+      await useCase.execute(
+        input({
+          idempotencyKey: 'key-2',
+          sourceStorageKey: 'sources/alice/b.mp4',
+        }),
+      );
+      const conflicting = input({ sourceStorageKey: 'sources/alice/b.mp4' });
+
+      await expect(useCase.execute(conflicting)).rejects.toBeInstanceOf(
+        IdempotencyConflictError,
+      );
+      await expect(repository.countByOwner('alice')).resolves.toBe(2);
+      expect(outbox.entries).toHaveLength(2);
+      await expect(
+        repository.hasEventBeenProcessed(conflicting.eventId),
+      ).resolves.toBe(false);
+    });
+
+    it('returns a pre-S6 request without a key that has the same source, and writes nothing', async () => {
+      const preS6 = createProcessingRequest({
+        ownerUserId: 'alice',
+        sourceStorageKey: 'sources/alice/a.mp4',
+      });
+      await repository.save(preS6);
+
+      const result = await useCase.execute(input());
+
+      expect(result.outcome).toBe('replayed');
+      expect(result.request).toBe(preS6);
+      await expect(repository.countByOwner('alice')).resolves.toBe(1);
+      expect(outbox.entries).toHaveLength(0);
+    });
+
+    it("returns the winner's request when its insert loses the race on the source, and writes nothing", async () => {
+      const winner = await useCase.execute(input());
+      // The loser read before the winner committed, so its source lookup
+      // saw no request and it went on to insert under its own key.
+      jest
+        .spyOn(repository, 'findByOwnerAndSource')
+        .mockResolvedValueOnce(undefined);
+
+      const loser = await useCase.execute(input({ idempotencyKey: 'key-2' }));
 
       expect(loser.outcome).toBe('replayed');
       expect(loser.request.processingRequestId).toBe(

@@ -115,6 +115,28 @@ describeIfDatabase(
       expect(await outboxEntries(alice)).toBe(1);
     });
 
+    it('answers 200 with the same body to a new key on a source the owner already has, writing once', async () => {
+      const alice = owner('alice');
+      const source = `sources/${alice}/a.mp4`;
+
+      const first = await create({
+        ownerUserId: alice,
+        sourceStorageKey: source,
+        idempotencyKey: 'key-1',
+      });
+      const second = await create({
+        ownerUserId: alice,
+        sourceStorageKey: source,
+        idempotencyKey: 'key-2',
+      });
+
+      expect(first.status).toBe(201);
+      expect(second.status).toBe(200);
+      expect(second.body).toStrictEqual(first.body);
+      expect(await rows(alice)).toBe(1);
+      expect(await outboxEntries(alice)).toBe(1);
+    });
+
     it('answers 409 for the key bound to another source, and writes nothing', async () => {
       const alice = owner('alice');
       await create({
