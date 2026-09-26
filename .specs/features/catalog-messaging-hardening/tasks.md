@@ -252,14 +252,16 @@ T9 -> T10
 
 **Done when**:
 
-- [ ] Unit, for each of Started, Completed and Failed: a stale attempt leaves the request unchanged, adds no outbox entry, and records the event as processed. A redelivery of it is also a no-op
-- [ ] A stale Completed that restates the stored key is still a no-op, not an AD-013 restatement (the check order)
-- [ ] PostgreSQL: a `QUEUED` request on attempt A2 receives `ProcessingFailed` for A1 and stays `QUEUED`. `ProcessingFailed` for A2 then fails it
-- [ ] Removing the comparison from any one of the three use cases turns its test red
-- [ ] Build gate passes
+- [x] Unit, for each of Started, Completed and Failed: a stale attempt leaves the request unchanged, adds no outbox entry, and records the event as processed. A redelivery of it is also a no-op
+- [x] A stale Completed that restates the stored key is still a no-op, not an AD-013 restatement (the check order)
+- [x] PostgreSQL: a `QUEUED` request on attempt A2 receives `ProcessingFailed` for A1 and stays `QUEUED`. `ProcessingFailed` for A2 then fails it
+- [x] Removing the comparison from any one of the three use cases turns its test red
+- [x] Build gate passes
 
 **Tests**: unit + integration
 **Gate**: build
+
+**Status**: ✅ Complete. `isStaleAttempt(request, attemptId)` in the domain; the Start, Complete and processing-origin Fail use cases call it under the row lock and, on a stale event, `markEventProcessed` and return the request untouched with no outbox row. `attemptId` is now required on the Start and Complete inputs, and the Started consumer passes it. Two interpretations: (1) the check sits after the under-lock `hasEventBeenProcessed` re-check, which is deduplication rather than an AD-013 branch, so a concurrent redelivery of a stale event is caught there instead of inserting a second processed row; (2) a request with no attempt yet (RECEIVED) is never stale, so a Started, Completed or Failed event for it still reaches the transition and is refused as before (MSG-05 needs this: every attempt differs from "none"). New tests (seen red first): unit, a stale event plus its redelivery for each use case (request, outbox and processed record checked), a current attempt still moving the request afterwards (Start, Fail), a stale Completed that restates the stored archive (the transition is never called) and one naming another archive for a COMPLETED request (a no-op, not a refusal), a stale Failed for a COMPLETED request (V7's case), and the Started consumer handing over the `attemptId`; PostgreSQL, the QUEUED A2 / Failed A1 / Failed A2 scenario including two redeliveries of the stale event, and a stale Started and Completed on a QUEUED request. Existing callers now pass the request's current attempt (a random one where the request is RECEIVED or absent), with no assertion changed: the Start and Complete use-case specs, `test/durability.e2e-spec.ts` and the `start`/`complete` helpers of `test/lifecycle-ordering.e2e-spec.ts`. Negatives: no comparison in Start → 1 red, in Complete → 3 red, in Fail → 3 red unit and 1 red against PostgreSQL; the Complete check moved after the transition → 2 red; no RECEIVED exemption → 3 red. Build gate on a fresh container: lint, typecheck, 227 unit (218 + 9), 156 e2e (154 + 2), build; 0 skipped.
 
 ---
 

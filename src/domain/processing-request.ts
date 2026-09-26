@@ -95,6 +95,21 @@ export function acceptProcessingRequest(
  * **same object** when an event restates what is already true, so callers
  * can record the event as seen without writing a state change or publishing.
  */
+/**
+ * Whether an attempt event (started, completed or failed) belongs to an
+ * attempt other than the request's current one. Such an event is a leftover
+ * of an earlier attempt: it is recorded and ignored, never applied.
+ *
+ * A request with no attempt yet (RECEIVED) has nothing to be stale against,
+ * so its events fall through to the transition, which refuses them.
+ */
+export function isStaleAttempt(
+  request: ProcessingRequest,
+  attemptId: string | undefined,
+): boolean {
+  return request.attemptId !== undefined && attemptId !== request.attemptId;
+}
+
 export function isUnchanged(
   before: ProcessingRequest,
   after: ProcessingRequest,

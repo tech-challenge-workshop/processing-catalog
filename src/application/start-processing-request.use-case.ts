@@ -2,6 +2,7 @@ import { Inject } from '@nestjs/common';
 import {
   ProcessingRequest,
   ProcessingRequestDomainError,
+  isStaleAttempt,
   isUnchanged,
   startProcessingRequest,
 } from '../domain/processing-request';
@@ -11,6 +12,8 @@ import type { ProcessingRequestRepository } from '../domain/processing-request.r
 export interface StartProcessingRequestInput {
   eventId: string;
   processingRequestId: string;
+  /** The attempt that started. */
+  attemptId: string;
   occurredAt: string;
 }
 
@@ -57,6 +60,17 @@ export class StartProcessingRequestUseCase {
       // Checked again under the lock: the check above can race a concurrent
       // delivery of the same event.
       if (await ctx.requests.hasEventBeenProcessed(input.eventId)) {
+        return request;
+      }
+
+      if (isStaleAttempt(request, input.attemptId)) {
+        // An event from an earlier attempt: recorded so its redelivery is a
+        // duplicate, and otherwise ignored. Checked before the transition, so
+        // it is never mistaken for a restatement of the current attempt.
+        await ctx.requests.markEventProcessed(
+          input.eventId,
+          request.processingRequestId,
+        );
         return request;
       }
 

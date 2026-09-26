@@ -277,6 +277,28 @@ describe('lifecycle consumers', () => {
       ).toBe(ProcessingRequestStatus.PROCESSING);
     });
 
+    it('hands the attemptId to the use case', async () => {
+      const useCase = new StartProcessingRequestUseCase(repository, unitOfWork);
+      const execute = jest.spyOn(useCase, 'execute');
+      const request = await queued();
+
+      await new ProcessingStartedConsumer(connection, useCase).handleMessage(
+        JSON.stringify({
+          eventId: 'started-1',
+          processingRequestId: request.processingRequestId,
+          attemptId: request.attemptId,
+          occurredAt: '2026-09-20T00:00:00Z',
+        }),
+      );
+
+      expect(execute).toHaveBeenCalledWith({
+        eventId: 'started-1',
+        processingRequestId: request.processingRequestId,
+        attemptId: request.attemptId,
+        occurredAt: '2026-09-20T00:00:00Z',
+      });
+    });
+
     it('applies no second transition for a duplicate delivery', async () => {
       const request = await queued();
       const content = JSON.stringify({

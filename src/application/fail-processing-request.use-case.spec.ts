@@ -6,6 +6,7 @@ import { randomUUID } from 'crypto';
 import {
   ProcessingRequestDomainError,
   ProcessingRequestStatus,
+  completeProcessingRequest,
   startProcessingRequest,
 } from '../domain/processing-request';
 import { failureReasonFor } from '../domain/failure-reason';
@@ -301,6 +302,89 @@ describe('FailProcessingRequestUseCase', () => {
       expect(outbox.recordedTerminalEvents).toHaveLength(before);
       expect(await repository.hasEventBeenProcessed('failed-early')).toBe(
         false,
+      );
+    });
+  });
+
+  describe('a processing failure from another attempt', () => {
+    const storedCopy = async (id: string) => ({
+      ...(await repository.findByProcessingRequestId(id))!,
+    });
+
+    it('changes nothing, publishes nothing and records the event, also when redelivered', async () => {
+      const request = await queued();
+      const snapshot = await storedCopy(request.processingRequestId);
+      const entries = outbox.entries.length;
+      const stale = {
+        eventId: 'failed-stale',
+        origin: 'processing' as const,
+        attemptId: randomUUID(),
+        processingRequestId: request.processingRequestId,
+        failureCode: 'PROCESSAMENTO_FALHOU' as const,
+        occurredAt: new Date().toISOString(),
+      };
+
+      const returned = await useCase.execute(stale);
+      const redelivered = await useCase.execute(stale);
+
+      expect(returned).toEqual(snapshot);
+      expect(redelivered).toEqual(snapshot);
+      expect(await storedCopy(request.processingRequestId)).toEqual(snapshot);
+      expect(snapshot.status).toBe(ProcessingRequestStatus.QUEUED);
+      expect(outbox.entries).toHaveLength(entries);
+      expect(await repository.hasEventBeenProcessed('failed-stale')).toBe(true);
+    });
+
+    it('cannot fail a request its current attempt completed', async () => {
+      const request = await queued();
+      await repository.update(
+        completeProcessingRequest(
+          startProcessingRequest(request),
+          'zips/output.zip',
+        ),
+      );
+      const snapshot = await storedCopy(request.processingRequestId);
+      const entries = outbox.entries.length;
+
+      const returned = await useCase.execute({
+        eventId: 'failed-stale',
+        origin: 'processing',
+        attemptId: randomUUID(),
+        processingRequestId: request.processingRequestId,
+        failureCode: 'PROCESSAMENTO_FALHOU',
+        occurredAt: new Date().toISOString(),
+      });
+
+      expect(returned).toEqual(snapshot);
+      expect(await storedCopy(request.processingRequestId)).toEqual(snapshot);
+      expect(snapshot.status).toBe(ProcessingRequestStatus.COMPLETED);
+      expect(outbox.entries).toHaveLength(entries);
+      expect(await repository.hasEventBeenProcessed('failed-stale')).toBe(true);
+    });
+
+    it('still lets the current attempt fail the request afterwards', async () => {
+      const request = await queued();
+      await useCase.execute({
+        eventId: 'failed-stale',
+        origin: 'processing',
+        attemptId: randomUUID(),
+        processingRequestId: request.processingRequestId,
+        failureCode: 'PROCESSAMENTO_FALHOU',
+        occurredAt: new Date().toISOString(),
+      });
+
+      const updated = await useCase.execute({
+        eventId: 'failed-current',
+        origin: 'processing',
+        attemptId: request.attemptId,
+        processingRequestId: request.processingRequestId,
+        failureCode: 'PROCESSAMENTO_FALHOU',
+        occurredAt: new Date().toISOString(),
+      });
+
+      expect(updated.status).toBe(ProcessingRequestStatus.FAILED);
+      expect(outbox.recordedTerminalEvents.at(-1)!.attemptId).toBe(
+        request.attemptId,
       );
     });
   });
