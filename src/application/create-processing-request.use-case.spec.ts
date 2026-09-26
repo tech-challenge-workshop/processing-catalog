@@ -8,6 +8,10 @@ import {
   IdempotencyConflictError,
 } from './create-processing-request.use-case';
 import {
+  DuplicateIdempotencyKeyError,
+  DuplicateSourceError,
+} from '../domain/processing-request.repository';
+import {
   ProcessingRequestDomainError,
   ProcessingRequestStatus,
   createProcessingRequest,
@@ -297,6 +301,46 @@ describe('CreateProcessingRequestUseCase', () => {
         useCase.execute(input({ sourceStorageKey: 'sources/alice/b.mp4' })),
       ).rejects.toBeInstanceOf(IdempotencyConflictError);
       expect(outbox.entries).toHaveLength(1);
+    });
+
+    // A lost race whose re-read finds no winner (it was deleted, or the read
+    // missed it) has nothing to replay: the insert's own error surfaces.
+    it('rethrows the duplicate-key error when the re-read after a lost key race finds nothing, and writes nothing', async () => {
+      await useCase.execute(input());
+      // Both reads of the key miss: the fast path and the re-read.
+      jest
+        .spyOn(repository, 'findByOwnerAndIdempotencyKey')
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce(undefined);
+      const loser = input({ sourceStorageKey: 'sources/alice/b.mp4' });
+
+      await expect(useCase.execute(loser)).rejects.toBeInstanceOf(
+        DuplicateIdempotencyKeyError,
+      );
+      await expect(repository.countByOwner('alice')).resolves.toBe(1);
+      expect(outbox.entries).toHaveLength(1);
+      await expect(
+        repository.hasEventBeenProcessed(loser.eventId),
+      ).resolves.toBe(false);
+    });
+
+    it('rethrows the duplicate-source error when the re-read after a lost source race finds nothing, and writes nothing', async () => {
+      await useCase.execute(input());
+      // Both reads of the source miss: the fast path and the re-read.
+      jest
+        .spyOn(repository, 'findByOwnerAndSource')
+        .mockResolvedValueOnce(undefined)
+        .mockResolvedValueOnce(undefined);
+      const loser = input({ idempotencyKey: 'key-2' });
+
+      await expect(useCase.execute(loser)).rejects.toBeInstanceOf(
+        DuplicateSourceError,
+      );
+      await expect(repository.countByOwner('alice')).resolves.toBe(1);
+      expect(outbox.entries).toHaveLength(1);
+      await expect(
+        repository.hasEventBeenProcessed(loser.eventId),
+      ).resolves.toBe(false);
     });
   });
 });

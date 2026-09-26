@@ -162,6 +162,77 @@ describeIfDatabase(
       expect(await outboxEntries(alice)).toBe(1);
     });
 
+    it('answers 409 for a key bound to another source even when the new source already has a request, and writes nothing', async () => {
+      const alice = owner('alice');
+      const first = await create({
+        ownerUserId: alice,
+        sourceStorageKey: `sources/${alice}/a.mp4`,
+        idempotencyKey: 'key-1',
+      });
+      const second = await create({
+        ownerUserId: alice,
+        sourceStorageKey: `sources/${alice}/b.mp4`,
+        idempotencyKey: 'key-2',
+      });
+
+      // key-1 is bound to a.mp4; b.mp4 already has its own request. The key
+      // decides: a conflict, not a replay of b.mp4's request.
+      const res = await create({
+        ownerUserId: alice,
+        sourceStorageKey: `sources/${alice}/b.mp4`,
+        idempotencyKey: 'key-1',
+      });
+
+      expect(first.status).toBe(201);
+      expect(second.status).toBe(201);
+      expect(res.status).toBe(409);
+      expect(res.body).toStrictEqual({
+        message:
+          'idempotencyKey is already used for a different sourceStorageKey',
+        error: 'Conflict',
+        statusCode: 409,
+      });
+      expect(await rows(alice)).toBe(2);
+      expect(await outboxEntries(alice)).toBe(2);
+    });
+
+    it('answers 200 with a pre-S6 request that has no key and the same source, and writes nothing', async () => {
+      const alice = owner('alice');
+      const source = `sources/${alice}/a.mp4`;
+      const preS6Id = randomUUID();
+      const createdAt = '2025-01-01T00:00:00.000Z';
+      // Written as a request created before S6: no idempotency key.
+      await dataSource.query(
+        `INSERT INTO processing_request
+           (processing_request_id, owner_user_id, source_storage_key, status,
+            created_at, updated_at, idempotency_key)
+         VALUES ($1, $2, $3, 'RECEIVED', $4, $4, NULL)`,
+        [preS6Id, alice, source, createdAt],
+      );
+
+      const res = await create({
+        ownerUserId: alice,
+        sourceStorageKey: source,
+        idempotencyKey: 'key-1',
+      });
+
+      expect(res.status).toBe(200);
+      expect(res.body).toStrictEqual({
+        processingRequestId: preS6Id,
+        status: 'RECEIVED',
+        ownerUserId: alice,
+        sourceStorageKey: source,
+        createdAt,
+      });
+      expect(await rows(alice)).toBe(1);
+      expect(await outboxEntries(alice)).toBe(0);
+      const keys: { key: string | null }[] = await dataSource.query(
+        'SELECT idempotency_key AS key FROM processing_request WHERE owner_user_id = $1',
+        [alice],
+      );
+      expect(keys).toEqual([{ key: null }]);
+    });
+
     it.each([
       ['missing', undefined],
       ['empty', ''],
@@ -324,6 +395,40 @@ describeIfDatabase(
           body.sourceStorageKey,
         );
         expect(await written(body)).toEqual({ rows: 1, outbox: 1 });
+      });
+
+      // Two malformed fields: the first in the order ownerUserId,
+      // sourceStorageKey, idempotencyKey is named, whichever check fails.
+      it('names ownerUserId when it is not a string and idempotencyKey is too long, and writes nothing', async () => {
+        const body = validBody();
+
+        const res = await create({
+          ...body,
+          ownerUserId: 42,
+          idempotencyKey: 'x'.repeat(256),
+        });
+
+        expect(res.status).toBe(400);
+        expect(res.body).toStrictEqual(
+          badRequest('ownerUserId must be a string'),
+        );
+        expect(await written(body)).toEqual({ rows: 0, outbox: 0 });
+      });
+
+      it('names sourceStorageKey when it is too long and idempotencyKey is not a string, and writes nothing', async () => {
+        const body = validBody();
+
+        const res = await create({
+          ...body,
+          sourceStorageKey: ofLength('sources/long', 1025),
+          idempotencyKey: 42,
+        });
+
+        expect(res.status).toBe(400);
+        expect(res.body).toStrictEqual(
+          badRequest('sourceStorageKey must be at most 1024 characters'),
+        );
+        expect(await written(body)).toEqual({ rows: 0, outbox: 0 });
       });
 
       it.each(
