@@ -6,6 +6,7 @@ import {
   createProcessingRequest,
   failProcessingRequest,
 } from '../src/domain/processing-request';
+import { DuplicateIdempotencyKeyError } from '../src/domain/processing-request.repository';
 import { createDataSource } from '../src/infrastructure/persistence/data-source';
 import { TypeOrmProcessingRequestRepository } from '../src/infrastructure/persistence/typeorm-processing-request.repository';
 
@@ -146,6 +147,84 @@ describeIfDatabase('TypeOrmProcessingRequestRepository', () => {
   it('reports an unknown event as not processed', async () => {
     expect(await repository.hasEventBeenProcessed(randomUUID())).toBe(false);
     expect(await repository.findByEventId(randomUUID())).toBeUndefined();
+  });
+
+  describe('idempotency keys', () => {
+    const keyed = (ownerUserId: string, idempotencyKey: string) =>
+      createProcessingRequest({
+        ownerUserId,
+        sourceStorageKey: `sources/${ownerUserId}/video.mp4`,
+        idempotencyKey,
+      });
+
+    const countFor = async (ownerUserId: string, key: string) => {
+      const rows: { n: number }[] = await dataSource.query(
+        `SELECT count(*)::int AS n FROM processing_request
+          WHERE owner_user_id = $1 AND idempotency_key = $2`,
+        [ownerUserId, key],
+      );
+      return rows[0].n;
+    };
+
+    it("finds the owner's request by its key, and not another owner's", async () => {
+      const owner = 'user-' + randomUUID();
+      const key = 'key-' + randomUUID();
+      const request = keyed(owner, key);
+      await repository.save(request);
+
+      const found = await repository.findByOwnerAndIdempotencyKey(owner, key);
+      expect(found!.processingRequestId).toBe(request.processingRequestId);
+      expect(found!.idempotencyKey).toBe(key);
+      await expect(
+        repository.findByOwnerAndIdempotencyKey('user-' + randomUUID(), key),
+      ).resolves.toBeUndefined();
+      await expect(
+        repository.findByOwnerAndIdempotencyKey(owner, 'key-' + randomUUID()),
+      ).resolves.toBeUndefined();
+    });
+
+    it('raises DuplicateIdempotencyKeyError on a second insert with the same owner and key', async () => {
+      const owner = 'user-' + randomUUID();
+      const key = 'key-' + randomUUID();
+      await repository.save(keyed(owner, key));
+
+      await expect(repository.save(keyed(owner, key))).rejects.toBeInstanceOf(
+        DuplicateIdempotencyKeyError,
+      );
+      expect(await countFor(owner, key)).toBe(1);
+    });
+
+    it('saves the same key for two owners', async () => {
+      const key = 'key-' + randomUUID();
+      const alice = 'user-' + randomUUID();
+      const bob = 'user-' + randomUUID();
+
+      await repository.save(keyed(alice, key));
+      await repository.save(keyed(bob, key));
+
+      expect(await countFor(alice, key)).toBe(1);
+      expect(await countFor(bob, key)).toBe(1);
+    });
+
+    it('does not map a unique violation on another constraint', async () => {
+      const request = keyed('user-' + randomUUID(), 'key-' + randomUUID());
+      await repository.save(request);
+      // Same primary key, different key: 23505 on processing_request_pkey.
+      const samePrimaryKey = {
+        ...keyed('user-' + randomUUID(), 'key-' + randomUUID()),
+        processingRequestId: request.processingRequestId,
+      };
+
+      const error: unknown = await repository.save(samePrimaryKey).then(
+        () => undefined,
+        (e: unknown) => e,
+      );
+
+      expect(error).not.toBeInstanceOf(DuplicateIdempotencyKeyError);
+      expect(error).toMatchObject({
+        driverError: { code: '23505', constraint: 'processing_request_pkey' },
+      });
+    });
   });
 
   it('applies the migrations twice with no change on the second run', async () => {
