@@ -88,10 +88,10 @@ Decisions from the gray-area discussion of 2026-09-26 are in `fiap-x-platform/.s
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| UPL-11 | P1: Idempotent creation | Execute | Implementing |
-| UPL-12 | P1: Idempotent creation | Execute | Implementing |
-| UPL-13 | P2: The archive key, for its owner only | Execute | Implementing |
-| UPL-14 | P1: Idempotent creation (schema and migration) | Execute | Implementing |
+| UPL-11 | P1: Idempotent creation | Verify | Verified |
+| UPL-12 | P1: Idempotent creation | Verify | Verified |
+| UPL-13 | P2: The archive key, for its owner only | Verify | Verified |
+| UPL-14 | P1: Idempotent creation (schema and migration) | Verify | Verified |
 
 **ID format:** `[CATEGORY]-[NUMBER]`
 

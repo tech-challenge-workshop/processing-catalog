@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 4,
+  "next_id": 6,
   "lessons": [
     {
       "id": "L-001",
@@ -58,6 +58,42 @@
       ],
       "created": "2026-09-26T03:43:02Z",
       "last_seen": "2026-09-26T03:43:02Z"
+    },
+    {
+      "id": "L-004",
+      "key": "spec_precision_gap::when a client chosen identifier is trimmed for validation the spec must say whether the raw or trimmed value is stored and matched",
+      "text": "When a client-chosen identifier is trimmed for validation, the spec must say whether the raw or trimmed value is stored and matched.",
+      "signal": "spec_precision_gap",
+      "scope": "interface",
+      "status": "candidate",
+      "features": [
+        "upload-download"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "src/interface/create-processing-request.controller.ts:75 (interface)"
+      ],
+      "created": "2026-09-26T05:29:40Z",
+      "last_seen": "2026-09-26T05:29:40Z"
+    },
+    {
+      "id": "L-005",
+      "key": "spec_precision_gap::a client chosen token stored under a btree unique index needs a specified maximum length so an oversized value is a 400 not a 500",
+      "text": "A client-chosen token stored under a btree unique index needs a specified maximum length so an oversized value is a 400, not a 500.",
+      "signal": "spec_precision_gap",
+      "scope": "persistence",
+      "status": "candidate",
+      "features": [
+        "upload-download"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "src/infrastructure/persistence/migrations/1789956000000-AddIdempotencyKey.ts:16 (persistence)"
+      ],
+      "created": "2026-09-26T05:29:40Z",
+      "last_seen": "2026-09-26T05:29:40Z"
     }
   ]
 }
