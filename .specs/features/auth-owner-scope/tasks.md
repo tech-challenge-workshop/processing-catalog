@@ -72,13 +72,14 @@ T4 -> T5
 - Skill: NONE
 
 **Done when**:
-- [ ] Every method takes the owner; no method lists without one
-- [ ] In-memory: filter by owner, order `createdAt` desc then `processingRequestId` asc, offset/limit applied after ordering, `countByOwner` counts only that owner, `findByIdAndOwner` returns `undefined` for another owner
-- [ ] Unit tests cover two owners, an empty owner, equal `createdAt` tiebreak, and a page beyond the end
-- [ ] Quick gate passes; test count grows by at least 6
+- [x] Every method takes the owner; no method lists without one
+- [x] In-memory: filter by owner, order `createdAt` desc then `processingRequestId` asc, offset/limit applied after ordering, `countByOwner` counts only that owner, `findByIdAndOwner` returns `undefined` for another owner
+- [x] Unit tests cover two owners, an empty owner, equal `createdAt` tiebreak, and a page beyond the end
+- [x] Quick gate passes; test count grows by at least 6
 
 **Tests**: unit
 **Gate**: quick
+**Status**: ✅ Complete. Quick gate green (unit 121 → 128). `tsc` stays red until T2 implements the port in the TypeORM adapter.
 
 ---
 

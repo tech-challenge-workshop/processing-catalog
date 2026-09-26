@@ -92,9 +92,9 @@ Decisions from the gray-area discussion of 2026-09-26 are in `fiap-x-platform/.s
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| AUTH-10 | P1: One owner's requests, one page at a time | Tasks | In Tasks |
-| AUTH-11 | P1: One owner's requests, one page at a time | Tasks | In Tasks |
-| AUTH-12 | P2: One request, for its owner only | Tasks | In Tasks |
+| AUTH-10 | P1: One owner's requests, one page at a time | Execute | Implementing |
+| AUTH-11 | P1: One owner's requests, one page at a time | Execute | Implementing |
+| AUTH-12 | P2: One request, for its owner only | Execute | Implementing |
 | AUTH-13 | P1–P2: owner-scoped responses expose no storage keys | Tasks | In Tasks |
 
 **ID format:** `[CATEGORY]-[NUMBER]`
