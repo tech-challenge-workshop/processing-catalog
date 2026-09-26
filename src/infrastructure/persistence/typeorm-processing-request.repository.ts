@@ -1,12 +1,34 @@
-import { DataSource, EntityManager } from 'typeorm';
+import { DataSource, EntityManager, QueryFailedError } from 'typeorm';
 import {
   FailureCode,
   ProcessingRequest,
   ProcessingRequestStatus,
 } from '../../domain/processing-request';
-import { ProcessingRequestRepository } from '../../domain/processing-request.repository';
+import {
+  DuplicateIdempotencyKeyError,
+  ProcessingRequestRepository,
+} from '../../domain/processing-request.repository';
 import { ProcessedEventEntity } from './processed-event.entity';
 import { ProcessingRequestEntity } from './processing-request.entity';
+
+const UNIQUE_VIOLATION = '23505';
+const IDEMPOTENCY_INDEX = 'uq_processing_request_owner_idempotency';
+
+/**
+ * Only a violation of the idempotency index is a lost race. A duplicate
+ * primary key or any other constraint is a real error and propagates.
+ */
+function isIdempotencyViolation(error: unknown): boolean {
+  if (!(error instanceof QueryFailedError)) {
+    return false;
+  }
+  const driverError = error.driverError as
+    { code?: string; constraint?: string } | undefined;
+  return (
+    driverError?.code === UNIQUE_VIOLATION &&
+    driverError.constraint === IDEMPOTENCY_INDEX
+  );
+}
 
 function toDomain(row: ProcessingRequestEntity): ProcessingRequest {
   return {
@@ -54,7 +76,19 @@ export class TypeOrmProcessingRequestRepository implements ProcessingRequestRepo
   }
 
   async save(request: ProcessingRequest): Promise<void> {
-    await this.manager.insert(ProcessingRequestEntity, toRow(request));
+    try {
+      await this.manager.insert(ProcessingRequestEntity, toRow(request));
+    } catch (error) {
+      if (isIdempotencyViolation(error)) {
+        // Inside a transaction, PostgreSQL has already aborted it: the caller
+        // must re-read on a fresh connection, not through this manager.
+        throw new DuplicateIdempotencyKeyError(
+          request.ownerUserId,
+          request.idempotencyKey!,
+        );
+      }
+      throw error;
+    }
   }
 
   async update(request: ProcessingRequest): Promise<void> {
@@ -138,6 +172,16 @@ export class TypeOrmProcessingRequestRepository implements ProcessingRequestRepo
   ): Promise<ProcessingRequest | undefined> {
     const row = await this.manager.findOne(ProcessingRequestEntity, {
       where: { processingRequestId, ownerUserId },
+    });
+    return row ? toDomain(row) : undefined;
+  }
+
+  async findByOwnerAndIdempotencyKey(
+    ownerUserId: string,
+    idempotencyKey: string,
+  ): Promise<ProcessingRequest | undefined> {
+    const row = await this.manager.findOne(ProcessingRequestEntity, {
+      where: { ownerUserId, idempotencyKey },
     });
     return row ? toDomain(row) : undefined;
   }

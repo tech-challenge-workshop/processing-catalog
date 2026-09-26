@@ -122,11 +122,12 @@ T6
 - Skill: NONE
 
 **Done when**:
-- [ ] Against PostgreSQL: lookup by owner and key; a duplicate insert raises `DuplicateIdempotencyKeyError`; a `23505` on another constraint is not mapped
-- [ ] Build gate passes, 0 skipped
+- [x] Against PostgreSQL: lookup by owner and key; a duplicate insert raises `DuplicateIdempotencyKeyError`; a `23505` on another constraint is not mapped
+- [x] Build gate passes, 0 skipped
 
 **Tests**: integration
 **Gate**: build
+**Status**: ✅ Complete. Build gate green: lint, typecheck, unit 151, e2e 85 → 89 with 0 skipped, build. `tsc` is green again. The mapping matches on both `code = 23505` and `constraint = uq_processing_request_owner_idempotency`. A duplicate primary key, a 23505 on `processing_request_pkey`, propagates unmapped.
 
 ---
 
