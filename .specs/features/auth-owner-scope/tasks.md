@@ -97,12 +97,13 @@ T4 -> T5
 - Skill: NONE
 
 **Done when**:
-- [ ] No load-then-filter: the owner is in the query for all three methods
-- [ ] An e2e suite against PostgreSQL seeds two owners and asserts disjoint pages, the right `total`, the tiebreak on equal `createdAt`, offset beyond the end, and `findByIdAndOwner` returning nothing for the other owner
-- [ ] Full gate passes with `DATABASE_HOST` set and 0 skipped
+- [x] No load-then-filter: the owner is in the query for all three methods
+- [x] An e2e suite against PostgreSQL seeds two owners and asserts disjoint pages, the right `total`, the tiebreak on equal `createdAt`, offset beyond the end, and `findByIdAndOwner` returning nothing for the other owner
+- [x] Full gate passes with `DATABASE_HOST` set and 0 skipped
 
 **Tests**: integration
 **Gate**: full
+**Status**: ✅ Complete. Full gate green: unit 128, e2e 43 → 50, 0 skipped with `DATABASE_HOST`. `tsc` green again. `test/owner-scoped-reads.e2e-spec.ts` captures the SQL to prove the owner is in each query.
 
 ---
 

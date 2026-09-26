@@ -107,4 +107,36 @@ export class TypeOrmProcessingRequestRepository implements ProcessingRequestRepo
     });
     return count > 0;
   }
+
+  // The owner is part of every WHERE below: PostgreSQL filters, orders and
+  // bounds the page, so no row of another owner is ever loaded.
+  async findPageByOwner(
+    ownerUserId: string,
+    offset: number,
+    limit: number,
+  ): Promise<ProcessingRequest[]> {
+    const rows = await this.manager.find(ProcessingRequestEntity, {
+      where: { ownerUserId },
+      order: { createdAt: 'DESC', processingRequestId: 'ASC' },
+      skip: offset,
+      take: limit,
+    });
+    return rows.map(toDomain);
+  }
+
+  countByOwner(ownerUserId: string): Promise<number> {
+    return this.manager.count(ProcessingRequestEntity, {
+      where: { ownerUserId },
+    });
+  }
+
+  async findByIdAndOwner(
+    processingRequestId: string,
+    ownerUserId: string,
+  ): Promise<ProcessingRequest | undefined> {
+    const row = await this.manager.findOne(ProcessingRequestEntity, {
+      where: { processingRequestId, ownerUserId },
+    });
+    return row ? toDomain(row) : undefined;
+  }
 }
