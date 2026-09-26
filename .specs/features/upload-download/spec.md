@@ -88,16 +88,16 @@ Decisions from the gray-area discussion of 2026-09-26 are in `fiap-x-platform/.s
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| UPL-11 | P1: Idempotent creation | Design | Pending |
-| UPL-12 | P1: Idempotent creation | Design | Pending |
-| UPL-13 | P2: The archive key, for its owner only | Design | Pending |
-| UPL-14 | P1: Idempotent creation (schema and migration) | Design | Pending |
+| UPL-11 | P1: Idempotent creation | Tasks | In Tasks |
+| UPL-12 | P1: Idempotent creation | Tasks | In Tasks |
+| UPL-13 | P2: The archive key, for its owner only | Tasks | In Tasks |
+| UPL-14 | P1: Idempotent creation (schema and migration) | Tasks | In Tasks |
 
 **ID format:** `[CATEGORY]-[NUMBER]`
 
 **Status values:** Pending → In Design → In Tasks → Implementing → Verified
 
-**Coverage:** 4 total, 0 mapped to tasks, 4 unmapped ⚠️
+**Coverage:** 4 total, 4 mapped to tasks, 0 unmapped
 
 ---
 
