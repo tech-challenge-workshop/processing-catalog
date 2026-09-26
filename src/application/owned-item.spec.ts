@@ -17,6 +17,7 @@ function stored(overrides: Partial<ProcessingRequest>): ProcessingRequest {
     attemptId: undefined,
     zipStorageKey: undefined,
     failureCode: undefined,
+    idempotencyKey: undefined,
     createdAt,
     updatedAt,
     ...overrides,

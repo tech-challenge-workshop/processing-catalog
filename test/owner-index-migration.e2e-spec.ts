@@ -6,6 +6,21 @@ const describeIfDatabase = configured ? describe : describe.skip;
 
 const MIGRATION = 'IndexProcessingRequestOwnerCreatedAt1789955000000';
 
+async function undoMigrationsAfter(
+  dataSource: DataSource,
+  name: string,
+): Promise<void> {
+  for (;;) {
+    const last: { name: string }[] = await dataSource.query(
+      'SELECT name FROM migrations ORDER BY timestamp DESC LIMIT 1',
+    );
+    if (last[0].name === name) {
+      return;
+    }
+    await dataSource.undoLastMigration();
+  }
+}
+
 describeIfDatabase('owner index migration', () => {
   let dataSource: DataSource;
 
@@ -40,6 +55,9 @@ describeIfDatabase('owner index migration', () => {
   });
 
   it('restores the owner-only index when reverted, and reapplies cleanly', async () => {
+    // Step back past migrations added after this one; afterAll and the
+    // reapply below restore them.
+    await undoMigrationsAfter(dataSource, MIGRATION);
     const executed: { name: string }[] = await dataSource.query(
       'SELECT name FROM migrations ORDER BY timestamp DESC LIMIT 1',
     );

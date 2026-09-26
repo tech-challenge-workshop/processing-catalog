@@ -63,6 +63,27 @@ describeIfDatabase('TypeOrmProcessingRequestRepository', () => {
     expect(found!.failureCode).toBeUndefined();
   });
 
+  it('round-trips the idempotency key, and keeps an absent key absent', async () => {
+    const keyed = createProcessingRequest({
+      ownerUserId: 'user-' + randomUUID(),
+      sourceStorageKey: 'videos/input.mp4',
+      idempotencyKey: 'key-' + randomUUID(),
+    });
+    const unkeyed = newRequest();
+    await repository.save(keyed);
+    await repository.save(unkeyed);
+
+    const foundKeyed = await repository.findByProcessingRequestId(
+      keyed.processingRequestId,
+    );
+    const foundUnkeyed = await repository.findByProcessingRequestId(
+      unkeyed.processingRequestId,
+    );
+
+    expect(foundKeyed!.idempotencyKey).toBe(keyed.idempotencyKey);
+    expect(foundUnkeyed!.idempotencyKey).toBeUndefined();
+  });
+
   it('persists a transition with its attempt and failure code', async () => {
     const request = newRequest();
     await repository.save(request);
