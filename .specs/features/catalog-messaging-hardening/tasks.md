@@ -90,12 +90,14 @@ T9 -> T10
 
 **Done when**:
 
-- [ ] Each of these inputs gives the expected value: `""` 1000, `"  "` 1000, unset 1000, `"0"` 0, `"250"` 250, `"-1"` 1000, `"abc"` 1000
-- [ ] Removing the blank check turns the `""` case red
-- [ ] Quick gate passes
+- [x] Each of these inputs gives the expected value: `""` 1000, `"  "` 1000, unset 1000, `"0"` 0, `"250"` 250, `"-1"` 1000, `"abc"` 1000
+- [x] Removing the blank check turns the `""` case red
+- [x] Quick gate passes
 
 **Tests**: unit
 **Gate**: quick
+
+**Status**: ✅ Complete. `parseNonNegativeMs(raw, fallback)` holds the rule (T2 reuses it). Seen red first: `""` and `"  "` failed before the fix; removing the blank check again turned both red. Quick gate 186 passed (179 + 7), 0 skipped.
 
 ---
 

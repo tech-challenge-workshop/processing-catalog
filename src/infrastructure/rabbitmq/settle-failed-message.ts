@@ -2,11 +2,30 @@ import { ProcessingRequestDomainError } from '../../domain/processing-request';
 
 export const DEFAULT_RETRY_BACKOFF_MS = 1000;
 
-export function retryBackoffMs(): number {
-  const configured = Number(process.env.RABBITMQ_RETRY_BACKOFF_MS);
+/**
+ * Reads a non-negative millisecond setting. Unset, empty or whitespace-only
+ * means the default: `Number('')` is 0, so without the blank check an empty
+ * variable would silently become zero. `0` is an explicit, valid value;
+ * negative or non-numeric values fall back to the default.
+ */
+export function parseNonNegativeMs(
+  raw: string | undefined,
+  fallback: number,
+): number {
+  if (raw === undefined || raw.trim() === '') {
+    return fallback;
+  }
+  const configured = Number(raw);
   return Number.isFinite(configured) && configured >= 0
     ? configured
-    : DEFAULT_RETRY_BACKOFF_MS;
+    : fallback;
+}
+
+export function retryBackoffMs(): number {
+  return parseNonNegativeMs(
+    process.env.RABBITMQ_RETRY_BACKOFF_MS,
+    DEFAULT_RETRY_BACKOFF_MS,
+  );
 }
 
 /**

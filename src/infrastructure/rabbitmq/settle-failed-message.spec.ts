@@ -116,4 +116,21 @@ describe('retryBackoffMs', () => {
     process.env.RABBITMQ_RETRY_BACKOFF_MS = '250';
     expect(retryBackoffMs()).toBe(250);
   });
+
+  it.each([
+    ['empty', '', 1000],
+    ['whitespace only', '  ', 1000],
+    ['zero', '0', 0],
+    ['a valid value', '250', 250],
+    ['negative', '-1', 1000],
+    ['not a number', 'abc', 1000],
+  ])('maps %s (%j) to %d ms', (_label, raw, expected) => {
+    process.env.RABBITMQ_RETRY_BACKOFF_MS = raw;
+    expect(retryBackoffMs()).toBe(expected);
+  });
+
+  it('maps unset to 1000 ms', () => {
+    delete process.env.RABBITMQ_RETRY_BACKOFF_MS;
+    expect(retryBackoffMs()).toBe(1000);
+  });
 });
