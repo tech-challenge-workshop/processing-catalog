@@ -172,11 +172,12 @@ T6
 - Skill: NONE
 
 **Done when**:
-- [ ] e2e: 201 then 200 with the same `processingRequestId`; 409 for another source; 400 without the key; existing create tests updated to send a key (each change listed, no assertion weakened)
-- [ ] Build gate passes, 0 skipped
+- [x] e2e: 201 then 200 with the same `processingRequestId`; 409 for another source; 400 without the key; existing create tests updated to send a key (each change listed, no assertion weakened)
+- [x] Build gate passes, 0 skipped
 
 **Tests**: e2e
 **Gate**: build
+**Status**: ✅ Complete. Build gate green: lint, typecheck, unit 160, e2e 94 → 101 with 0 skipped, build. The new suite `test/create-processing-request-route.e2e-spec.ts` runs over PostgreSQL in the production composition. It covers 201 then 200 with an identical body; 409 `{message: 'idempotencyKey is already used for a different sourceStorageKey', error: 'Conflict', statusCode: 409}`; 400 `idempotencyKey is required` for a missing, empty or blank key; two concurrent POSTs answered 201 + 200 with one id; and two owners sharing a key. Every case asserts the rows and outbox entries written. The T4 transitional key is gone. Existing tests changed only by adding `idempotencyKey` to the body: `create-processing-request.controller.spec.ts` (3 posts), `test/app.e2e-spec.ts` (3 posts), `test/local-docker-integration.e2e-spec.ts` (6 posts, `randomUUID()`). No assertion changed.
 
 ---
 
