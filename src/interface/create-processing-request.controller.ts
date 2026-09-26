@@ -15,10 +15,13 @@ export class CreateProcessingRequestController {
     this.validateDto(dto);
 
     try {
-      const request = await this.createProcessingRequestUseCase.execute({
+      const { request } = await this.createProcessingRequestUseCase.execute({
         eventId: randomUUID(),
         ownerUserId: dto.ownerUserId,
         sourceStorageKey: dto.sourceStorageKey,
+        // Transitional until T5 requires the key on this route: a fresh key
+        // per call keeps today's behaviour, one request per POST.
+        idempotencyKey: randomUUID(),
       });
 
       return {

@@ -23,13 +23,14 @@ describe('StartProcessingRequestUseCase', () => {
   });
 
   const queuedRequest = async () => {
-    const created = await new CreateProcessingRequestUseCase(
+    const { request: created } = await new CreateProcessingRequestUseCase(
       repository,
       unitOfWork,
     ).execute({
       eventId: randomUUID(),
       ownerUserId: 'user-123',
       sourceStorageKey: 'videos/input.mp4',
+      idempotencyKey: randomUUID(),
     });
     return new AcceptProcessingRequestUseCase(repository, unitOfWork).execute({
       eventId: 'accept-1',
@@ -98,13 +99,14 @@ describe('StartProcessingRequestUseCase', () => {
   });
 
   it('rejects a start from RECEIVED and leaves the stored state unchanged', async () => {
-    const created = await new CreateProcessingRequestUseCase(
+    const { request: created } = await new CreateProcessingRequestUseCase(
       repository,
       unitOfWork,
     ).execute({
       eventId: randomUUID(),
       ownerUserId: 'user-123',
       sourceStorageKey: 'videos/input.mp4',
+      idempotencyKey: randomUUID(),
     });
 
     await expect(

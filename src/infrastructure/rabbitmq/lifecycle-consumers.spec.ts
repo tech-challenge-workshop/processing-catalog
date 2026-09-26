@@ -29,12 +29,15 @@ describe('lifecycle consumers', () => {
     unitOfWork = new InMemoryUnitOfWork(repository, outbox);
   });
 
-  const received = () =>
-    new CreateProcessingRequestUseCase(repository, unitOfWork).execute({
-      eventId: randomUUID(),
-      ownerUserId: 'user-123',
-      sourceStorageKey: 'videos/input.mp4',
-    });
+  const received = async () =>
+    (
+      await new CreateProcessingRequestUseCase(repository, unitOfWork).execute({
+        eventId: randomUUID(),
+        ownerUserId: 'user-123',
+        sourceStorageKey: 'videos/input.mp4',
+        idempotencyKey: randomUUID(),
+      })
+    ).request;
 
   const queued = async () => {
     const created = await received();
