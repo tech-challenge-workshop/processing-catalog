@@ -147,13 +147,14 @@ T4 -> T5
 - Skill: NONE
 
 **Done when**:
-- [ ] Items carry exactly `processingRequestId`, `status`, `createdAt`, `updatedAt`, plus `failureReason` only for `FAILED`, with the exact sentence per code
-- [ ] No item carries `sourceStorageKey`, `zipStorageKey`, `attemptId`, `failureCode` or `ownerUserId`
-- [ ] The list query computes `offset = (page - 1) * pageSize` and returns `{ items, page, pageSize, total }`
-- [ ] Quick gate passes; test count grows by at least 8
+- [x] Items carry exactly `processingRequestId`, `status`, `createdAt`, `updatedAt`, plus `failureReason` only for `FAILED`, with the exact sentence per code
+- [x] No item carries `sourceStorageKey`, `zipStorageKey`, `attemptId`, `failureCode` or `ownerUserId`
+- [x] The list query computes `offset = (page - 1) * pageSize` and returns `{ items, page, pageSize, total }`
+- [x] Quick gate passes; test count grows by at least 8
 
 **Tests**: unit
 **Gate**: quick
+**Status**: ✅ Complete. Quick gate green (unit 128 → 144). Files follow the design: `owned-item.ts`, `list-owned-processing-requests.query.ts`, `get-owned-processing-request.query.ts`. T5 registers the queries in the module.
 
 ---
 
