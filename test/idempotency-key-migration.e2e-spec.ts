@@ -8,6 +8,21 @@ const describeIfDatabase = configured ? describe : describe.skip;
 const MIGRATION = 'AddIdempotencyKey1789956000000';
 const INDEX = 'uq_processing_request_owner_idempotency';
 
+async function undoMigrationsAfter(
+  dataSource: DataSource,
+  name: string,
+): Promise<void> {
+  for (;;) {
+    const last: { name: string }[] = await dataSource.query(
+      'SELECT name FROM migrations ORDER BY timestamp DESC LIMIT 1',
+    );
+    if (last[0].name === name) {
+      return;
+    }
+    await dataSource.undoLastMigration();
+  }
+}
+
 describeIfDatabase('idempotency key migration', () => {
   let dataSource: DataSource;
 
@@ -41,13 +56,15 @@ describeIfDatabase('idempotency key migration', () => {
       [id, owner],
     );
 
+  // One source per row: an owner cannot hold two requests for one source
+  // (uq_processing_request_owner_source), and only the key is under test here.
   const insertWithKey = (id: string, owner: string, key: string | null) =>
     dataSource.query(
       `INSERT INTO processing_request
          (processing_request_id, owner_user_id, source_storage_key, status,
           idempotency_key, created_at, updated_at)
-       VALUES ($1, $2, 'sources/s6.mp4', 'RECEIVED', $3, now(), now())`,
-      [id, owner, key],
+       VALUES ($1, $2, $3, 'RECEIVED', $4, now(), now())`,
+      [id, owner, `sources/s6-${id}.mp4`, key],
     );
 
   beforeAll(async () => {
@@ -70,6 +87,9 @@ describeIfDatabase('idempotency key migration', () => {
   });
 
   it('removes both when reverted, and a pre-existing row survives the reapply with a NULL key', async () => {
+    // Step back past migrations added after this one; afterAll and the
+    // reapply below restore them.
+    await undoMigrationsAfter(dataSource, MIGRATION);
     const executed: { name: string }[] = await dataSource.query(
       'SELECT name FROM migrations ORDER BY timestamp DESC LIMIT 1',
     );

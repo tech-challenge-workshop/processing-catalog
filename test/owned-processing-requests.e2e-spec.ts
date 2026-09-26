@@ -95,7 +95,8 @@ describeIfDatabase('owned processing requests over HTTP (PostgreSQL)', () => {
     const r = {
       ...createProcessingRequest({
         ownerUserId,
-        sourceStorageKey: `sources/${ownerUserId}/video.mp4`,
+        // One source per request: an owner holds one request per source.
+        sourceStorageKey: `sources/${ownerUserId}/${processingRequestId}.mp4`,
       }),
       processingRequestId,
       createdAt,
@@ -278,7 +279,8 @@ describeIfDatabase('owned processing requests over HTTP (PostgreSQL)', () => {
         'attemptId',
         'failureCode',
         'ownerUserId',
-        `sources/${alice}/video.mp4`,
+        completed.sourceStorageKey,
+        failed.sourceStorageKey,
         `results/${alice}/frames.zip`,
         completed.attemptId!,
         failed.attemptId!,

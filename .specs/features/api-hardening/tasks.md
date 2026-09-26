@@ -78,14 +78,16 @@ T5
 
 **Done when**:
 
-- [ ] After migrating, the index exists; after reverting, it does not; re-applying works
-- [ ] A second row with the same owner and source is rejected with `23505` on that index, also when both rows have a `NULL` key
-- [ ] Two owners with the same source string are both accepted
-- [ ] The test that pins the latest migration steps back past this one; its assertion is unchanged
-- [ ] Full gate passes; test count stated
+- [x] After migrating, the index exists; after reverting, it does not; re-applying works
+- [x] A second row with the same owner and source is rejected with `23505` on that index, also when both rows have a `NULL` key
+- [x] Two owners with the same source string are both accepted
+- [x] The test that pins the latest migration steps back past this one; its assertion is unchanged
+- [x] Full gate passes; test count stated
 
 **Tests**: integration
 **Gate**: full
+
+**Status**: ✅ Complete. Full gate green: unit 168, e2e 109 → 115 with 0 skipped. New suite `test/owner-source-migration.e2e-spec.ts` (6 tests). `test/idempotency-key-migration.e2e-spec.ts` now steps back past later migrations before its "last executed is S6's" assertion, which is kept as it was; `test/owner-index-migration.e2e-spec.ts` already did. Fixtures that gave one owner several requests for one source now give each request its own source, because the index forbids that data; no assertion was weakened: `idempotency-key-migration` (`insertWithKey` source per id), `owner-scoped-reads` (`ownedBy` source per id), `owned-processing-requests` (`seed` source per id; the leak check now names the two actual sources instead of the shared literal). A database that already holds duplicate sources, such as one left by the pre-T1 suites, fails the migration as the spec decides; the gate runs on a fresh container.
 
 ---
 

@@ -59,7 +59,8 @@ describeIfDatabase(
       return {
         ...createProcessingRequest({
           ownerUserId,
-          sourceStorageKey: 'videos/input.mp4',
+          // One source per request: an owner holds one request per source.
+          sourceStorageKey: `videos/${processingRequestId}.mp4`,
         }),
         processingRequestId,
         createdAt,
