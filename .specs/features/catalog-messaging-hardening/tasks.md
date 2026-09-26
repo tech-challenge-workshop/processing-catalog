@@ -345,15 +345,17 @@ T9 -> T10
 
 **Done when**:
 
-- [ ] Each new test fails under its mutant:
+- [x] Each new test fails under its mutant:
   - M13: key length checked before the other fields' type;
   - M14: the re-read miss returns `undefined`;
   - source checked before key for the `409`;
   - `NULL`-key rows ignored
-- [ ] Build gate passes
+- [x] Build gate passes
 
 **Tests**: unit + e2e
 **Gate**: build
+
+**Status**: ✅ Complete. Tests only; no production code changed. Unit (`create-processing-request.use-case.spec.ts`, 2): a lost key race whose re-read misses rethrows `DuplicateIdempotencyKeyError`, and a lost source race whose re-read misses rethrows `DuplicateSourceError`; both leave one request, one outbox entry and the loser's event unrecorded (the in-memory repository raises the same errors as the TypeORM adapter). PostgreSQL (`test/create-processing-request-route.e2e-spec.ts`, 4): `{ownerUserId: 42, idempotencyKey: 'x'.repeat(256)}` → exact `400 ownerUserId must be a string`; a 1025-character source with `idempotencyKey: 42` → exact `400 sourceStorageKey must be at most 1024 characters` (pins T9's bound in the field order); key-1 on a.mp4, key-2 on b.mp4, then key-1 on b.mp4 → exact `409`, two rows and two outbox entries; a pre-S6 row inserted with a `NULL` key → `200` with that request's exact body, one row, no outbox entry, the key still `NULL`. All writes-nothing checks included. Mutants (each kills only its own test): M13, the key's length checked before the owner → the cross-field test red; M14 in the source branch → 1 red, in the key branch → 1 red; the source lookup before the key lookup → the `409` test red; `findByOwnerAndSource` ignoring `NULL`-key rows → the replay test red; every bound checked after all type checks → the source/key order test red. No existing test changed. Build gate on a fresh container: lint, typecheck, 229 unit (227 + 2), 171 e2e (167 + 4), build; 0 skipped.
 
 ---
 
