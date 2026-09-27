@@ -46,6 +46,7 @@ describe('InMemoryEventPublisher', () => {
       eventId: 'event-123',
       processingRequestId: 'req-123',
       ownerUserId: 'user-123',
+      ownerEmail: 'user-123@fiapx.local',
       status: ProcessingRequestStatus.COMPLETED,
       zipStorageKey: 'zips/output.zip',
       occurredAt: new Date().toISOString(),

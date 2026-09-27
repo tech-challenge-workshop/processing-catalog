@@ -114,6 +114,7 @@ export class FailProcessingRequestUseCase {
           eventId: randomUUID(),
           processingRequestId: updated.processingRequestId,
           ownerUserId: updated.ownerUserId,
+          ownerEmail: updated.ownerEmail,
           status: updated.status,
           failureReason: failureReasonFor(input.failureCode),
           attemptId: updated.attemptId,

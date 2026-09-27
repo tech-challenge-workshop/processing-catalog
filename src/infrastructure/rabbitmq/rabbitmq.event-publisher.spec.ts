@@ -58,6 +58,7 @@ describe('RabbitMQEventPublisher', () => {
       eventId: 'event-3',
       processingRequestId: 'req-3',
       ownerUserId: 'user-3',
+      ownerEmail: 'user-3@fiapx.local',
       status: ProcessingRequestStatus.COMPLETED,
       zipStorageKey: 'zips/output.zip',
       occurredAt: new Date().toISOString(),
