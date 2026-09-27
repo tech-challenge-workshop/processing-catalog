@@ -14,6 +14,18 @@ Corroborated across multiple features. Safe to apply as guidance.
 - evidence: src/infrastructure/persistence/migrations/1789956000000-AddIdempotencyKey.ts:16 (persistence) (+1 more)
 - last seen: 2026-09-26T13:56:10Z
 
+### L-009 - Test that a lock is released, not only that it excludes; an exclusion test passes equally for a lock never released.
+- signal: `surviving_mutant` · recurrence: 2 feature(s) · scope: `persistence` · harmful: 0
+- features: catalog-messaging-hardening, service-robustness
+- evidence: src/infrastructure/messaging/outbox-relay.ts (persistence)
+- last seen: 2026-09-27T00:57:44Z
+
+### L-010 - When a rule makes a previously ignored field meaningful, re-check every parser of that field for presence-only validation.
+- signal: `spec_precision_gap` · recurrence: 2 feature(s) · scope: `messaging` · harmful: 0
+- features: catalog-messaging-hardening, service-robustness
+- evidence: src/infrastructure/rabbitmq/processing-failed.consumer.ts:55 (messaging)
+- last seen: 2026-09-27T00:57:44Z
+
 ## Candidates (under observation - do NOT load as guidance yet)
 
 Seen once or not yet corroborated. Tracked, not trusted.
@@ -60,17 +72,11 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: src/infrastructure/rabbitmq/rabbitmq.connection.ts:52 (config)
 - last seen: 2026-09-26T19:03:04Z
 
-### L-009 - Test that a lock is released, not only that it excludes; an exclusion test passes equally for a lock never released.
-- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `persistence` · harmful: 0
-- features: catalog-messaging-hardening
-- evidence: src/infrastructure/messaging/outbox-relay.ts (persistence)
-- last seen: 2026-09-26T19:03:04Z
-
-### L-010 - When a rule makes a previously ignored field meaningful, re-check every parser of that field for presence-only validation.
-- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `messaging` · harmful: 0
-- features: catalog-messaging-hardening
-- evidence: src/infrastructure/rabbitmq/processing-failed.consumer.ts:55 (messaging)
-- last seen: 2026-09-26T19:03:04Z
+### L-011 - Bound a timer setting at both ends: Node clamps delays above 2^31-1 ms (and fractions below 1) to 1 ms, so a huge value is a near-zero timeout.
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `config` · harmful: 0
+- features: service-robustness
+- evidence: src/infrastructure/rabbitmq/rabbitmq.connection.ts:58 (config)
+- last seen: 2026-09-27T00:57:44Z
 
 ## Quarantined (failed when applied - ignore)
 
