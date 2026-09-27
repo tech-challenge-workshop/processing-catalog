@@ -45,6 +45,7 @@ describeIfDatabase('idempotent creation (PostgreSQL)', () => {
     const input: CreateProcessingRequestInput = {
       eventId: randomUUID(),
       ownerUserId,
+      ownerEmail: `${ownerUserId}@fiapx.local`,
       sourceStorageKey,
       idempotencyKey,
     };

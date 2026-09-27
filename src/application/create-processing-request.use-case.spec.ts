@@ -34,12 +34,14 @@ describe('CreateProcessingRequestUseCase', () => {
     const { request } = await useCase.execute({
       eventId: 'event-123',
       ownerUserId: 'user-123',
+      ownerEmail: 'alice@fiapx.local',
       sourceStorageKey: 'videos/input.mp4',
       idempotencyKey: 'key-123',
     });
 
     expect(request.status).toBe(ProcessingRequestStatus.RECEIVED);
     expect(request.ownerUserId).toBe('user-123');
+    expect(request.ownerEmail).toBe('alice@fiapx.local');
     expect(request.sourceStorageKey).toBe('videos/input.mp4');
 
     const published = outbox.recordedValidationRequests.at(-1);
@@ -49,12 +51,14 @@ describe('CreateProcessingRequestUseCase', () => {
     expect(published!.ownerUserId).toBe('user-123');
     expect(published!.sourceStorageKey).toBe('videos/input.mp4');
     expect(published!.occurredAt).toBe(request.createdAt.toISOString());
+    expect(published).not.toHaveProperty('ownerEmail'); // Global Constraint: never on this event
   });
 
   it('is idempotent for a repeated eventId', async () => {
     const input = {
       eventId: 'event-456',
       ownerUserId: 'user-456',
+      ownerEmail: 'user-456@fiapx.local',
       sourceStorageKey: 'videos/another.mp4',
       idempotencyKey: 'key-456',
     };
@@ -73,6 +77,7 @@ describe('CreateProcessingRequestUseCase', () => {
       useCase.execute({
         eventId: 'event-789',
         ownerUserId: '',
+        ownerEmail: 'alice@fiapx.local',
         sourceStorageKey: 'videos/input.mp4',
         idempotencyKey: 'key-789',
       }),
@@ -89,6 +94,7 @@ describe('CreateProcessingRequestUseCase', () => {
       useCase.execute({
         eventId: 'event-abc',
         ownerUserId: 'user-abc',
+        ownerEmail: 'user-abc@fiapx.local',
         sourceStorageKey: '',
         idempotencyKey: 'key-abc',
       }),
@@ -105,16 +111,21 @@ describe('CreateProcessingRequestUseCase', () => {
       overrides: Partial<{
         eventId: string;
         ownerUserId: string;
+        ownerEmail: string;
         sourceStorageKey: string;
         idempotencyKey: string;
       }> = {},
-    ) => ({
-      eventId: 'event-' + Math.random().toString(36).slice(2),
-      ownerUserId: 'alice',
-      sourceStorageKey: 'sources/alice/a.mp4',
-      idempotencyKey: 'key-1',
-      ...overrides,
-    });
+    ) => {
+      const ownerUserId = overrides.ownerUserId ?? 'alice';
+      return {
+        eventId: 'event-' + Math.random().toString(36).slice(2),
+        ownerUserId,
+        ownerEmail: `${ownerUserId}@fiapx.local`,
+        sourceStorageKey: 'sources/alice/a.mp4',
+        idempotencyKey: 'key-1',
+        ...overrides,
+      };
+    };
 
     it('creates on an unused key: one stored request carrying the key and one outbox entry', async () => {
       const result = await useCase.execute(input());
@@ -261,6 +272,7 @@ describe('CreateProcessingRequestUseCase', () => {
     it('returns a pre-S6 request without a key that has the same source, and writes nothing', async () => {
       const preS6 = createProcessingRequest({
         ownerUserId: 'alice',
+        ownerEmail: 'alice@fiapx.local',
         sourceStorageKey: 'sources/alice/a.mp4',
       });
       await repository.save(preS6);

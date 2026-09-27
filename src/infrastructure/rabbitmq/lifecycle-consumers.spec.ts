@@ -35,6 +35,7 @@ describe('lifecycle consumers', () => {
       await new CreateProcessingRequestUseCase(repository, unitOfWork).execute({
         eventId: randomUUID(),
         ownerUserId: 'user-123',
+        ownerEmail: 'user-123@fiapx.local',
         sourceStorageKey: 'videos/input.mp4',
         idempotencyKey: randomUUID(),
       })

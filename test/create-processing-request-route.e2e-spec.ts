@@ -86,6 +86,7 @@ describeIfDatabase(
       const alice = owner('alice');
       const body = {
         ownerUserId: alice,
+        ownerEmail: `${alice}@fiapx.local`,
         sourceStorageKey: `sources/${alice}/a.mp4`,
         idempotencyKey: 'key-1',
       };
@@ -121,11 +122,13 @@ describeIfDatabase(
 
       const first = await create({
         ownerUserId: alice,
+        ownerEmail: `${alice}@fiapx.local`,
         sourceStorageKey: source,
         idempotencyKey: 'key-1',
       });
       const second = await create({
         ownerUserId: alice,
+        ownerEmail: `${alice}@fiapx.local`,
         sourceStorageKey: source,
         idempotencyKey: 'key-2',
       });
@@ -141,12 +144,14 @@ describeIfDatabase(
       const alice = owner('alice');
       await create({
         ownerUserId: alice,
+        ownerEmail: `${alice}@fiapx.local`,
         sourceStorageKey: `sources/${alice}/a.mp4`,
         idempotencyKey: 'key-1',
       });
 
       const res = await create({
         ownerUserId: alice,
+        ownerEmail: `${alice}@fiapx.local`,
         sourceStorageKey: `sources/${alice}/b.mp4`,
         idempotencyKey: 'key-1',
       });
@@ -166,11 +171,13 @@ describeIfDatabase(
       const alice = owner('alice');
       const first = await create({
         ownerUserId: alice,
+        ownerEmail: `${alice}@fiapx.local`,
         sourceStorageKey: `sources/${alice}/a.mp4`,
         idempotencyKey: 'key-1',
       });
       const second = await create({
         ownerUserId: alice,
+        ownerEmail: `${alice}@fiapx.local`,
         sourceStorageKey: `sources/${alice}/b.mp4`,
         idempotencyKey: 'key-2',
       });
@@ -179,6 +186,7 @@ describeIfDatabase(
       // decides: a conflict, not a replay of b.mp4's request.
       const res = await create({
         ownerUserId: alice,
+        ownerEmail: `${alice}@fiapx.local`,
         sourceStorageKey: `sources/${alice}/b.mp4`,
         idempotencyKey: 'key-1',
       });
@@ -212,6 +220,7 @@ describeIfDatabase(
 
       const res = await create({
         ownerUserId: alice,
+        ownerEmail: `${alice}@fiapx.local`,
         sourceStorageKey: source,
         idempotencyKey: 'key-1',
       });
@@ -244,6 +253,7 @@ describeIfDatabase(
 
         const res = await create({
           ownerUserId: alice,
+          ownerEmail: `${alice}@fiapx.local`,
           sourceStorageKey: `sources/${alice}/a.mp4`,
           idempotencyKey,
         });
@@ -272,6 +282,7 @@ describeIfDatabase(
         const ownerUserId = owner('malformed');
         return {
           ownerUserId,
+          ownerEmail: `${ownerUserId}@fiapx.local`,
           sourceStorageKey: `sources/${ownerUserId}/a.mp4`,
           idempotencyKey: 'key-' + randomUUID(),
         };
@@ -500,6 +511,7 @@ describeIfDatabase(
       const alice = owner('alice');
       const body = {
         ownerUserId: alice,
+        ownerEmail: `${alice}@fiapx.local`,
         sourceStorageKey: `sources/${alice}/a.mp4`,
         idempotencyKey: 'key-1',
       };
@@ -521,11 +533,13 @@ describeIfDatabase(
 
       const a = await create({
         ownerUserId: alice,
+        ownerEmail: `${alice}@fiapx.local`,
         sourceStorageKey: `sources/${alice}/a.mp4`,
         idempotencyKey: 'shared-key',
       });
       const b = await create({
         ownerUserId: bob,
+        ownerEmail: `${bob}@fiapx.local`,
         sourceStorageKey: `sources/${bob}/a.mp4`,
         idempotencyKey: 'shared-key',
       });

@@ -48,6 +48,7 @@ describe('CreateProcessingRequestController (integration)', () => {
   it('creates a processing request and returns its public fields', async () => {
     const response = await request.post('/processing-requests').send({
       ownerUserId: 'user-123',
+      ownerEmail: 'alice@fiapx.local',
       sourceStorageKey: 'videos/input.mp4',
       idempotencyKey: 'key-1',
     });
@@ -60,6 +61,19 @@ describe('CreateProcessingRequestController (integration)', () => {
     expect(body.ownerUserId).toBe('user-123');
     expect(body.sourceStorageKey).toBe('videos/input.mp4');
     expect(body.createdAt).toBeDefined();
+  });
+
+  it('rejects a missing ownerEmail with 400', async () => {
+    const response = await request.post('/processing-requests').send({
+      ownerUserId: 'user-123',
+      sourceStorageKey: 'videos/input.mp4',
+      idempotencyKey: 'key-1',
+    });
+
+    expect(response.status).toBe(400);
+    expect((response.body as { message: string }).message).toBe(
+      'ownerEmail is required',
+    );
   });
 
   it('rejects a request without ownerUserId', async () => {

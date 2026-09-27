@@ -39,6 +39,7 @@ export class CreateProcessingRequestController {
         await this.createProcessingRequestUseCase.execute({
           eventId: randomUUID(),
           ownerUserId: dto.ownerUserId,
+          ownerEmail: dto.ownerEmail,
           sourceStorageKey: dto.sourceStorageKey,
           idempotencyKey: dto.idempotencyKey,
         });
@@ -73,12 +74,14 @@ export class CreateProcessingRequestController {
    */
   private validateDto(dto: CreateProcessingRequestDto): void {
     requireString(dto, 'ownerUserId', MAX_OWNER_USER_ID_LENGTH);
+    requireString(dto, 'ownerEmail', MAX_OWNER_EMAIL_LENGTH);
     requireString(dto, 'sourceStorageKey', MAX_SOURCE_STORAGE_KEY_LENGTH);
     requireString(dto, 'idempotencyKey', MAX_IDEMPOTENCY_KEY_LENGTH);
   }
 }
 
 const MAX_OWNER_USER_ID_LENGTH = 255;
+const MAX_OWNER_EMAIL_LENGTH = 255;
 const MAX_SOURCE_STORAGE_KEY_LENGTH = 1024;
 /** Matches the API's limit on the Idempotency-Key header. */
 const MAX_IDEMPOTENCY_KEY_LENGTH = 255;

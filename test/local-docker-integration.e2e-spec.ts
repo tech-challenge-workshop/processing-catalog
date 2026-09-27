@@ -200,6 +200,7 @@ describe('Local Docker Integration (e2e)', () => {
       .post('/processing-requests')
       .send({
         ownerUserId: 'user-123',
+        ownerEmail: 'user-123@fiapx.local',
         sourceStorageKey: 'videos/input.mp4',
         idempotencyKey: randomUUID(),
       });
@@ -283,6 +284,7 @@ describe('Local Docker Integration (e2e)', () => {
       .post('/processing-requests')
       .send({
         ownerUserId: 'user-456',
+        ownerEmail: 'user-456@fiapx.local',
         sourceStorageKey: 'videos/duplicate.mp4',
         idempotencyKey: randomUUID(),
       });
@@ -314,6 +316,7 @@ describe('Local Docker Integration (e2e)', () => {
       .post('/processing-requests')
       .send({
         ownerUserId: 'user-789',
+        ownerEmail: 'user-789@fiapx.local',
         sourceStorageKey: 'videos/invalid.mp4',
         idempotencyKey: randomUUID(),
       });
@@ -344,6 +347,7 @@ describe('Local Docker Integration (e2e)', () => {
       .post('/processing-requests')
       .send({
         ownerUserId: 'user-obs',
+        ownerEmail: 'user-obs@fiapx.local',
         sourceStorageKey: 'videos/obs.mp4',
         idempotencyKey: randomUUID(),
       });
@@ -364,6 +368,7 @@ describe('Local Docker Integration (e2e)', () => {
       .post('/processing-requests')
       .send({
         ownerUserId: 'user-owned',
+        ownerEmail: 'user-owned@fiapx.local',
         sourceStorageKey: 'videos/o.mp4',
         idempotencyKey: randomUUID(),
       });
@@ -406,6 +411,7 @@ describe('Local Docker Integration (e2e)', () => {
       .post('/processing-requests')
       .send({
         ownerUserId,
+        ownerEmail: `${ownerUserId}@fiapx.local`,
         sourceStorageKey: key,
         idempotencyKey: randomUUID(),
       });
