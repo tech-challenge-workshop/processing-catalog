@@ -204,10 +204,10 @@ describeIfDatabase(
       // Written as a request created before S6: no idempotency key.
       await dataSource.query(
         `INSERT INTO processing_request
-           (processing_request_id, owner_user_id, source_storage_key, status,
-            created_at, updated_at, idempotency_key)
-         VALUES ($1, $2, $3, 'RECEIVED', $4, $4, NULL)`,
-        [preS6Id, alice, source, createdAt],
+           (processing_request_id, owner_user_id, owner_email, source_storage_key,
+            status, created_at, updated_at, idempotency_key)
+         VALUES ($1, $2, $3, $4, 'RECEIVED', $5, $5, NULL)`,
+        [preS6Id, alice, `${alice}@fiapx.local`, source, createdAt],
       );
 
       const res = await create({
