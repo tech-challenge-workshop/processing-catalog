@@ -59,6 +59,7 @@ describeIfDatabase(
       return {
         ...createProcessingRequest({
           ownerUserId,
+          ownerEmail: `${ownerUserId}@fiapx.local`,
           // One source per request: an owner holds one request per source.
           sourceStorageKey: `videos/${processingRequestId}.mp4`,
         }),

@@ -34,6 +34,7 @@ describeIfDatabase('TypeOrmProcessingRequestRepository', () => {
   const newRequest = () =>
     createProcessingRequest({
       ownerUserId: 'user-' + randomUUID(),
+      ownerEmail: 'owner-' + randomUUID() + '@fiapx.local',
       sourceStorageKey: 'videos/input.mp4',
     });
 
@@ -70,6 +71,7 @@ describeIfDatabase('TypeOrmProcessingRequestRepository', () => {
   it('round-trips the idempotency key, and keeps an absent key absent', async () => {
     const keyed = createProcessingRequest({
       ownerUserId: 'user-' + randomUUID(),
+      ownerEmail: 'owner-' + randomUUID() + '@fiapx.local',
       sourceStorageKey: 'videos/input.mp4',
       idempotencyKey: 'key-' + randomUUID(),
     });
@@ -156,6 +158,7 @@ describeIfDatabase('TypeOrmProcessingRequestRepository', () => {
     const keyed = (ownerUserId: string, idempotencyKey: string) =>
       createProcessingRequest({
         ownerUserId,
+        ownerEmail: `${ownerUserId}@fiapx.local`,
         sourceStorageKey: `sources/${ownerUserId}/video.mp4`,
         idempotencyKey,
       });
@@ -235,6 +238,7 @@ describeIfDatabase('TypeOrmProcessingRequestRepository', () => {
     const sourced = (ownerUserId: string, sourceStorageKey: string) =>
       createProcessingRequest({
         ownerUserId,
+        ownerEmail: `${ownerUserId}@fiapx.local`,
         sourceStorageKey,
         idempotencyKey: 'key-' + randomUUID(),
       });
@@ -282,6 +286,7 @@ describeIfDatabase('TypeOrmProcessingRequestRepository', () => {
       await repository.save(
         createProcessingRequest({
           ownerUserId: owner,
+          ownerEmail: `${owner}@fiapx.local`,
           sourceStorageKey: `sources/${owner}/a.mp4`,
           idempotencyKey: key,
         }),
@@ -291,6 +296,7 @@ describeIfDatabase('TypeOrmProcessingRequestRepository', () => {
         .save(
           createProcessingRequest({
             ownerUserId: owner,
+            ownerEmail: `${owner}@fiapx.local`,
             sourceStorageKey: `sources/${owner}/b.mp4`,
             idempotencyKey: key,
           }),

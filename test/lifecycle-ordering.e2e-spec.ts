@@ -41,6 +41,7 @@ describeIfDatabase('lifecycle ordering', () => {
   const aQueuedRequest = async () => {
     const request = createProcessingRequest({
       ownerUserId: 'user-' + randomUUID(),
+      ownerEmail: 'owner-' + randomUUID() + '@fiapx.local',
       sourceStorageKey: 'videos/input.mp4',
     });
     await repository.save(request);
@@ -85,6 +86,7 @@ describeIfDatabase('lifecycle ordering', () => {
   const aReceivedRequest = async () => {
     const request = createProcessingRequest({
       ownerUserId: 'user-' + randomUUID(),
+      ownerEmail: 'owner-' + randomUUID() + '@fiapx.local',
       sourceStorageKey: 'videos/input.mp4',
     });
     await repository.save(request);

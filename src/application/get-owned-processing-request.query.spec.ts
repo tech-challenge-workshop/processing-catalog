@@ -21,6 +21,7 @@ describe('GetOwnedProcessingRequestQuery', () => {
       acceptProcessingRequest(
         createProcessingRequest({
           ownerUserId: 'alice',
+          ownerEmail: 'alice@fiapx.local',
           sourceStorageKey: 'videos/input.mp4',
         }),
       ),
@@ -45,6 +46,7 @@ describe('GetOwnedProcessingRequestQuery', () => {
   it('returns nothing for another owner', async () => {
     const request = createProcessingRequest({
       ownerUserId: 'alice',
+      ownerEmail: 'alice@fiapx.local',
       sourceStorageKey: 'videos/input.mp4',
     });
     await repository.save(request);

@@ -59,6 +59,7 @@ describeIfDatabase('durability', () => {
   const aQueuedRequest = async () => {
     const request = createProcessingRequest({
       ownerUserId: 'user-' + randomUUID(),
+      ownerEmail: 'owner-' + randomUUID() + '@fiapx.local',
       sourceStorageKey: 'videos/input.mp4',
     });
     await repository.save(request);
@@ -212,6 +213,7 @@ describeIfDatabase('durability', () => {
   it('writes nothing anywhere when the transition is rejected', async () => {
     const request = createProcessingRequest({
       ownerUserId: 'user-' + randomUUID(),
+      ownerEmail: 'owner-' + randomUUID() + '@fiapx.local',
       sourceStorageKey: 'videos/input.mp4',
     });
     await repository.save(request);
