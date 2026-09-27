@@ -91,11 +91,6 @@ export function acceptProcessingRequest(
 }
 
 /**
- * Whether a transition changed anything. The lifecycle functions return the
- * **same object** when an event restates what is already true, so callers
- * can record the event as seen without writing a state change or publishing.
- */
-/**
  * Whether an attempt event (started, completed or failed) belongs to an
  * attempt other than the request's current one. Such an event is a leftover
  * of an earlier attempt: it is recorded and ignored, never applied.
@@ -110,6 +105,11 @@ export function isStaleAttempt(
   return request.attemptId !== undefined && attemptId !== request.attemptId;
 }
 
+/**
+ * Whether a transition changed anything. The lifecycle functions return the
+ * **same object** when an event restates what is already true, so callers
+ * can record the event as seen without writing a state change or publishing.
+ */
 export function isUnchanged(
   before: ProcessingRequest,
   after: ProcessingRequest,

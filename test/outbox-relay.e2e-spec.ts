@@ -296,6 +296,31 @@ describeIfDatabase('OutboxRelay across replicas and failures', () => {
     }
   });
 
+  it('releases the relay lock after a drain, so another replica drains the rows added afterwards', async () => {
+    const [first] = await addInterleaved(1, 1);
+    const publisherA = new CountingConnection();
+    const publisherB = new CountingConnection();
+    const relayA = new OutboxRelay(
+      dataSourceA,
+      publisherA as unknown as RabbitMQConnection,
+    );
+    const relayB = new OutboxRelay(
+      dataSourceB,
+      publisherB as unknown as RabbitMQConnection,
+    );
+
+    expect(await relayA.drain()).toBe(1);
+    expect(publisherA.sent.map((e) => e.eventId)).toEqual([first.eventId]);
+
+    const later = await addInterleaved(1, 3);
+
+    expect(await relayB.drain()).toBe(3);
+    expect(publisherB.sent.map((e) => e.eventId)).toEqual(
+      later.map((r) => r.eventId),
+    );
+    expect(await pendingIds()).toEqual([]);
+  });
+
   it('keeps the marks made before a failed publish, leaves the rest pending, and a later drain finishes them', async () => {
     const rows = await addInterleaved(1, 5);
     const publisher = new FailingOnNthConnection(3);
