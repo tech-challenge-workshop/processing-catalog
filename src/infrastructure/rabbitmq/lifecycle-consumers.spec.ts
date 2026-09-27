@@ -4,6 +4,7 @@ import {
 } from '../in-memory-unit-of-work';
 import { randomUUID } from 'crypto';
 import {
+  ProcessingRequestDomainError,
   ProcessingRequestStatus,
   startProcessingRequest,
 } from '../../domain/processing-request';
@@ -92,6 +93,15 @@ describe('lifecycle consumers', () => {
 
   const statusOf = async (id: string) =>
     (await repository.findByProcessingRequestId(id))?.status;
+
+  /** Every `attemptId` that is not a non-blank string (ROB-02). */
+  const malformedAttemptIds: [string, Record<string, unknown>][] = [
+    ['no attemptId', {}],
+    ['a null attemptId', { attemptId: null }],
+    ['a numeric attemptId', { attemptId: 1 }],
+    ['an empty attemptId', { attemptId: '' }],
+    ['a whitespace attemptId', { attemptId: '  ' }],
+  ];
 
   describe('VideoRejectedConsumer', () => {
     const consumer = () =>
@@ -325,6 +335,73 @@ describe('lifecycle consumers', () => {
         consumer().handleMessage(JSON.stringify({ eventId: 'started-1' })),
       ).rejects.toThrow('Invalid ProcessingStarted payload');
     });
+
+    it.each(malformedAttemptIds)(
+      'dead-letters a start with %s without calling the use case',
+      async (_case, attempt) => {
+        const useCase = new StartProcessingRequestUseCase(
+          repository,
+          unitOfWork,
+        );
+        const execute = jest.spyOn(useCase, 'execute');
+        const request = await queued();
+        const body = {
+          eventId: 'started-malformed',
+          processingRequestId: request.processingRequestId,
+          occurredAt: new Date().toISOString(),
+          ...attempt,
+        };
+
+        await expect(
+          new ProcessingStartedConsumer(connection, useCase).handleMessage(
+            JSON.stringify(body),
+          ),
+        ).rejects.toThrow(
+          new ProcessingRequestDomainError('attemptId is required'),
+        );
+        const { channel, message } = await deliver(
+          (conn) => new ProcessingStartedConsumer(conn, useCase),
+          body,
+        );
+
+        expect(channel.nack).toHaveBeenCalledWith(message, false, false);
+        expect(channel.ack).not.toHaveBeenCalled();
+        expect(execute).not.toHaveBeenCalled();
+        expect(await statusOf(request.processingRequestId)).toBe(
+          ProcessingRequestStatus.QUEUED,
+        );
+        expect(
+          await repository.hasEventBeenProcessed('started-malformed'),
+        ).toBe(false);
+      },
+    );
+
+    it('acks a start from another attempt and keeps the request QUEUED', async () => {
+      const request = await queued();
+
+      const { channel, message } = await deliver(
+        (conn) =>
+          new ProcessingStartedConsumer(
+            conn,
+            new StartProcessingRequestUseCase(repository, unitOfWork),
+          ),
+        {
+          eventId: 'started-stale',
+          processingRequestId: request.processingRequestId,
+          attemptId: randomUUID(),
+          occurredAt: new Date().toISOString(),
+        },
+      );
+
+      expect(channel.ack).toHaveBeenCalledWith(message);
+      expect(channel.nack).not.toHaveBeenCalled();
+      expect(await statusOf(request.processingRequestId)).toBe(
+        ProcessingRequestStatus.QUEUED,
+      );
+      expect(await repository.hasEventBeenProcessed('started-stale')).toBe(
+        true,
+      );
+    });
   });
 
   describe('ProcessingFailedConsumer', () => {
@@ -453,6 +530,73 @@ describe('lifecycle consumers', () => {
       await expect(
         consumer().handleMessage(JSON.stringify({ eventId: 'failed-1' })),
       ).rejects.toThrow('Invalid ProcessingFailed payload');
+    });
+
+    it.each(malformedAttemptIds)(
+      'dead-letters a failure with %s without calling the use case',
+      async (_case, attempt) => {
+        const useCase = new FailProcessingRequestUseCase(
+          repository,
+          unitOfWork,
+        );
+        const execute = jest.spyOn(useCase, 'execute');
+        const request = await processing();
+        const before = outbox.recordedTerminalEvents.length;
+        const body = {
+          eventId: 'failed-malformed',
+          processingRequestId: request.processingRequestId,
+          failureCode: 'PROCESSAMENTO_FALHOU',
+          occurredAt: new Date().toISOString(),
+          ...attempt,
+        };
+
+        await expect(
+          new ProcessingFailedConsumer(connection, useCase).handleMessage(
+            JSON.stringify(body),
+          ),
+        ).rejects.toThrow(
+          new ProcessingRequestDomainError('attemptId is required'),
+        );
+        const { channel, message } = await deliver(
+          (conn) => new ProcessingFailedConsumer(conn, useCase),
+          body,
+        );
+
+        expect(channel.nack).toHaveBeenCalledWith(message, false, false);
+        expect(channel.ack).not.toHaveBeenCalled();
+        expect(execute).not.toHaveBeenCalled();
+        expect(await statusOf(request.processingRequestId)).toBe(
+          ProcessingRequestStatus.PROCESSING,
+        );
+        expect(outbox.recordedTerminalEvents).toHaveLength(before);
+      },
+    );
+
+    it('acks a failure from another attempt and keeps the request PROCESSING', async () => {
+      const request = await processing();
+      const before = outbox.recordedTerminalEvents.length;
+
+      const { channel, message } = await deliver(
+        (conn) =>
+          new ProcessingFailedConsumer(
+            conn,
+            new FailProcessingRequestUseCase(repository, unitOfWork),
+          ),
+        {
+          eventId: 'failed-stale',
+          processingRequestId: request.processingRequestId,
+          attemptId: randomUUID(),
+          failureCode: 'PROCESSAMENTO_FALHOU',
+          occurredAt: new Date().toISOString(),
+        },
+      );
+
+      expect(channel.ack).toHaveBeenCalledWith(message);
+      expect(channel.nack).not.toHaveBeenCalled();
+      expect(await statusOf(request.processingRequestId)).toBe(
+        ProcessingRequestStatus.PROCESSING,
+      );
+      expect(outbox.recordedTerminalEvents).toHaveLength(before);
     });
   });
 });

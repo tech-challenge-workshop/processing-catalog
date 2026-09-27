@@ -5,6 +5,7 @@ import {
   ProcessingRequestDomainError,
 } from '../../domain/processing-request';
 import { ProcessingFailedDto } from '../../messaging/dto';
+import { isValidAttemptId } from './attempt-id';
 import { RabbitMQConnection } from './rabbitmq.connection';
 import { settleFailedMessage } from './settle-failed-message';
 
@@ -52,7 +53,6 @@ export class ProcessingFailedConsumer implements OnModuleInit {
       !('eventId' in content) ||
       !('processingRequestId' in content) ||
       !('failureCode' in content) ||
-      !('attemptId' in content) ||
       !('occurredAt' in content)
     ) {
       throw new ProcessingRequestDomainError(
@@ -61,11 +61,14 @@ export class ProcessingFailedConsumer implements OnModuleInit {
     }
 
     const payload = content as Record<string, unknown>;
+    if (!isValidAttemptId(payload.attemptId)) {
+      throw new ProcessingRequestDomainError('attemptId is required');
+    }
 
     return {
       eventId: String(payload.eventId),
       processingRequestId: String(payload.processingRequestId),
-      attemptId: String(payload.attemptId),
+      attemptId: payload.attemptId,
       failureCode: payload.failureCode as FailureCode,
       occurredAt: String(payload.occurredAt),
     };

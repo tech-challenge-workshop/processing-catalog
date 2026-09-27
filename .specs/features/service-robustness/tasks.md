@@ -88,12 +88,14 @@ T3
 - Skill: NONE
 
 **Done when**:
-- [ ] In each consumer, `null`, `1`, `''` and `'  '` each give `nack(false)` without calling the use case, and a valid different id gives the stale no-op. Started and Failed are seen red first
-- [ ] Putting the presence-only check back on Failed fails its test
-- [ ] Quick gate passes
+- [x] In each consumer, `null`, `1`, `''` and `'  '` each give `nack(false)` without calling the use case, and a valid different id gives the stale no-op. Started and Failed are seen red first
+- [x] Putting the presence-only check back on Failed fails its test
+- [x] Quick gate passes
 
 **Tests**: unit
 **Gate**: quick
+
+**Status**: ✅ Complete. New `src/infrastructure/rabbitmq/attempt-id.ts` (`isValidAttemptId`); the three consumers throw `ProcessingRequestDomainError('attemptId is required')` before the use case and pass the value through without `String()`; Completed's `hasAttemptId` is gone. Tests per consumer: missing, `null`, `1`, `''`, `'  '` → `nack(false)` with no use-case call and the state kept, plus a valid different id → ack with the state kept (stale no-op). Seen red first: Started and Failed (all five cases); Completed only on the error message (it already rejected these values) and on the new `1` case's message. The existing Completed table now expects `'attemptId is required'` instead of `'Invalid ProcessingCompleted payload'` and gained the `1` case. The stale cases were green before the change, as MSG-03 is unchanged. Negative: the presence-only check with `String()` back on Failed turns 4 cases red (`null`, `1`, `''`, `'  '`). Quick gate: 244 unit (230 + 14), 0 skipped.
 
 ---
 
