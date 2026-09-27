@@ -2,6 +2,7 @@ import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { CompleteProcessingRequestUseCase } from '../../application/complete-processing-request.use-case';
 import { ProcessingRequestDomainError } from '../../domain/processing-request';
 import { ProcessingCompletedDto } from '../../messaging/dto';
+import { isValidAttemptId } from './attempt-id';
 import { RabbitMQConnection } from './rabbitmq.connection';
 import { settleFailedMessage } from './settle-failed-message';
 
@@ -48,8 +49,7 @@ export class ProcessingCompletedConsumer implements OnModuleInit {
       !('eventId' in content) ||
       !('processingRequestId' in content) ||
       !('zipStorageKey' in content) ||
-      !('occurredAt' in content) ||
-      !hasAttemptId(content)
+      !('occurredAt' in content)
     ) {
       throw new ProcessingRequestDomainError(
         'Invalid ProcessingCompleted payload',
@@ -57,23 +57,16 @@ export class ProcessingCompletedConsumer implements OnModuleInit {
     }
 
     const payload = content as Record<string, unknown>;
+    if (!isValidAttemptId(payload.attemptId)) {
+      throw new ProcessingRequestDomainError('attemptId is required');
+    }
 
     return {
       eventId: String(payload.eventId),
       processingRequestId: String(payload.processingRequestId),
-      attemptId: payload.attemptId as string,
+      attemptId: payload.attemptId,
       zipStorageKey: String(payload.zipStorageKey),
       occurredAt: String(payload.occurredAt),
     };
   }
-}
-
-/**
- * A completion names the attempt that produced its archive; without one the
- * Catalog cannot tell a current completion from a stale one, so the message
- * is malformed rather than retried.
- */
-function hasAttemptId(content: object): boolean {
-  const attemptId = (content as Record<string, unknown>).attemptId;
-  return typeof attemptId === 'string' && attemptId.trim().length > 0;
 }

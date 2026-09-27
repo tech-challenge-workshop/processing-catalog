@@ -2,6 +2,7 @@ import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
 import { StartProcessingRequestUseCase } from '../../application/start-processing-request.use-case';
 import { ProcessingRequestDomainError } from '../../domain/processing-request';
 import { ProcessingStartedDto } from '../../messaging/dto';
+import { isValidAttemptId } from './attempt-id';
 import { RabbitMQConnection } from './rabbitmq.connection';
 import { settleFailedMessage } from './settle-failed-message';
 
@@ -46,7 +47,6 @@ export class ProcessingStartedConsumer implements OnModuleInit {
       typeof content !== 'object' ||
       !('eventId' in content) ||
       !('processingRequestId' in content) ||
-      !('attemptId' in content) ||
       !('occurredAt' in content)
     ) {
       throw new ProcessingRequestDomainError(
@@ -55,11 +55,14 @@ export class ProcessingStartedConsumer implements OnModuleInit {
     }
 
     const payload = content as Record<string, unknown>;
+    if (!isValidAttemptId(payload.attemptId)) {
+      throw new ProcessingRequestDomainError('attemptId is required');
+    }
 
     return {
       eventId: String(payload.eventId),
       processingRequestId: String(payload.processingRequestId),
-      attemptId: String(payload.attemptId),
+      attemptId: payload.attemptId,
       occurredAt: String(payload.occurredAt),
     };
   }

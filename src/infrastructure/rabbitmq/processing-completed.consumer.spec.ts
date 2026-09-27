@@ -204,6 +204,7 @@ describe('ProcessingCompletedConsumer', () => {
       ['an empty attemptId', { attemptId: '' }],
       ['a whitespace attemptId', { attemptId: '   ' }],
       ['a null attemptId', { attemptId: null }],
+      ['a numeric attemptId', { attemptId: 1 }],
     ])(
       'dead-letters a completion with %s without calling the use case',
       async (_case, attempt) => {
@@ -220,9 +221,7 @@ describe('ProcessingCompletedConsumer', () => {
         await expect(
           consumer.handleMessage(JSON.stringify(body)),
         ).rejects.toThrow(
-          new ProcessingRequestDomainError(
-            'Invalid ProcessingCompleted payload',
-          ),
+          new ProcessingRequestDomainError('attemptId is required'),
         );
         const { channel, message } = await deliver(body);
 
@@ -239,5 +238,28 @@ describe('ProcessingCompletedConsumer', () => {
         expect(outbox.recordedTerminalEvents).toHaveLength(0);
       },
     );
+
+    it('acks a completion from another attempt and keeps the request PROCESSING', async () => {
+      const request = await createQueuedRequest();
+
+      const { channel, message } = await deliver({
+        eventId: 'processing-completed-stale',
+        processingRequestId: request.processingRequestId,
+        attemptId: 'another-attempt',
+        zipStorageKey: 'zips/output.zip',
+        occurredAt: new Date().toISOString(),
+      });
+
+      expect(channel.ack).toHaveBeenCalledWith(message);
+      expect(channel.nack).not.toHaveBeenCalled();
+      expect(
+        (
+          await repository.findByProcessingRequestId(
+            request.processingRequestId,
+          )
+        )?.status,
+      ).toBe('PROCESSING');
+      expect(outbox.recordedTerminalEvents).toHaveLength(0);
+    });
   });
 });
