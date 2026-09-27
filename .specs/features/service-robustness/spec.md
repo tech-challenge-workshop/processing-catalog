@@ -107,9 +107,9 @@ Decisions of 2026-09-26 are in `context.md` beside this spec.
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| ROB-01 | P1: Timeout cannot be disabled (V45) | Execute | Implementing |
-| ROB-02 | P2: Malformed `attemptId` to the DLQ (V46) | Execute | Implementing |
-| ROB-03 | P3: Lock release, Fail order, spec note, comment (V47) | Execute | Implementing |
+| ROB-01 | P1: Timeout cannot be disabled (V45) | Validate | Implementing (open: V56, no upper bound; Node clamps timers over 2^31-1 ms to 1 ms) |
+| ROB-02 | P2: Malformed `attemptId` to the DLQ (V46) | Validate | Verified |
+| ROB-03 | P3: Lock release, Fail order, spec note, comment (V47) | Validate | Verified |
 
 **ID format:** `[CATEGORY]-[NUMBER]`
 
