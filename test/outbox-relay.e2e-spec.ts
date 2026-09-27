@@ -360,5 +360,20 @@ describeIfDatabase('OutboxRelay across replicas and failures', () => {
       expect(elapsed).toBeLessThan(2_000);
       expect(await pendingIds()).toEqual([row.eventId]);
     }, 10_000);
+
+    it('still times out when the timeout is configured as 0, falling back to 5000 ms', async () => {
+      // amqp-connection-manager reads a 0 timeout as "wait forever" (ROB-01).
+      process.env.OUTBOX_PUBLISH_TIMEOUT_MS = '0';
+      const [row] = await addInterleaved(1, 1);
+      const relay = new OutboxRelay(dataSourceA, connection);
+
+      const started = Date.now();
+      await expect(relay.drain()).rejects.toThrow('timeout');
+      const elapsed = Date.now() - started;
+
+      expect(elapsed).toBeGreaterThanOrEqual(4_500);
+      expect(elapsed).toBeLessThan(7_000);
+      expect(await pendingIds()).toEqual([row.eventId]);
+    }, 15_000);
   });
 });
