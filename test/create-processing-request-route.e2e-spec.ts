@@ -270,9 +270,11 @@ describeIfDatabase(
     );
 
     describe('malformed input', () => {
-      type Field = 'ownerUserId' | 'sourceStorageKey' | 'idempotencyKey';
+      type Field =
+        'ownerUserId' | 'ownerEmail' | 'sourceStorageKey' | 'idempotencyKey';
       const FIELDS: Field[] = [
         'ownerUserId',
+        'ownerEmail',
         'sourceStorageKey',
         'idempotencyKey',
       ];
@@ -372,6 +374,33 @@ describeIfDatabase(
 
         expect(res.status).toBe(201);
         expect((res.body as CreatedBody).ownerUserId).toBe(body.ownerUserId);
+        expect(await written(body)).toEqual({ rows: 1, outbox: 1 });
+      });
+
+      it('answers 400 to a 256-character ownerEmail, and writes nothing', async () => {
+        const body = validBody();
+
+        const res = await create({
+          ...body,
+          ownerEmail: ofLength('email', 256),
+        });
+
+        expect(res.status).toBe(400);
+        expect(res.body).toStrictEqual(
+          badRequest('ownerEmail must be at most 255 characters'),
+        );
+        expect(await written(body)).toEqual({ rows: 0, outbox: 0 });
+      });
+
+      it('accepts a 255-character ownerEmail', async () => {
+        const body = {
+          ...validBody(),
+          ownerEmail: ofLength('email', 255),
+        };
+
+        const res = await create(body);
+
+        expect(res.status).toBe(201);
         expect(await written(body)).toEqual({ rows: 1, outbox: 1 });
       });
 
@@ -480,18 +509,19 @@ describeIfDatabase(
         expect(await written(body)).toEqual({ rows: 1, outbox: 1 });
       });
 
-      // null for every field; missing, empty and blank for the two fields the
-      // S6 cases above do not already cover with their exact message.
+      // null for every field; missing, empty and blank for the fields the S6
+      // cases above do not already cover with their exact message.
       it.each([
         ...FIELDS.map((field) => [field, 'null', null] as const),
-        ...(['ownerUserId', 'sourceStorageKey'] as const).flatMap((field) =>
-          (
-            [
-              ['missing', undefined],
-              ['empty', ''],
-              ['blank', '   '],
-            ] as const
-          ).map(([label, value]) => [field, label, value] as const),
+        ...(['ownerUserId', 'ownerEmail', 'sourceStorageKey'] as const).flatMap(
+          (field) =>
+            (
+              [
+                ['missing', undefined],
+                ['empty', ''],
+                ['blank', '   '],
+              ] as const
+            ).map(([label, value]) => [field, label, value] as const),
         ),
       ])(
         'answers 400 %s is required to a %s value, and writes nothing',

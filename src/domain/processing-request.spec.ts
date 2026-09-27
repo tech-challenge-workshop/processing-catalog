@@ -17,7 +17,11 @@ describe('ProcessingRequest', () => {
     const ownerUserId = 'user-123';
     const sourceStorageKey = 'videos/input.mp4';
 
-    const request = createProcessingRequest({ ownerUserId, sourceStorageKey, ownerEmail: 'alice@fiapx.local' });
+    const request = createProcessingRequest({
+      ownerUserId,
+      sourceStorageKey,
+      ownerEmail: 'alice@fiapx.local',
+    });
 
     expect(request.status).toBe(ProcessingRequestStatus.RECEIVED);
     expect(request.ownerUserId).toBe(ownerUserId);
