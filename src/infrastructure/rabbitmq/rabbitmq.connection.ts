@@ -4,7 +4,6 @@ import {
   type AmqpConnectionManager,
   type ChannelWrapper,
 } from 'amqp-connection-manager';
-import { parseNonNegativeMs } from './settle-failed-message';
 
 export const RABBITMQ_EXCHANGE = 'fiapx.events';
 
@@ -43,14 +42,30 @@ export const DEFAULT_RABBITMQ_URL = 'amqp://rabbitmq:5672';
 export const DEFAULT_OUTBOX_PUBLISH_TIMEOUT_MS = 5000;
 
 /**
+ * Reads a strictly positive millisecond setting. Unset, blank, non-numeric,
+ * zero or negative values mean the default. Unlike a backoff, where `0` is a
+ * meaningful "no pause", a timeout of `0` is read by `amqp-connection-manager`
+ * as "no timeout", so it must never get through.
+ */
+export function parsePositiveMs(
+  raw: string | undefined,
+  fallback: number,
+): number {
+  if (raw === undefined || raw.trim() === '') {
+    return fallback;
+  }
+  const configured = Number(raw);
+  return Number.isFinite(configured) && configured > 0 ? configured : fallback;
+}
+
+/**
  * How long a publish may wait for the broker's confirm. An unconfirmed publish
  * is rejected and dropped from the wrapper's buffer, so the relay's drain ends
  * and the row stays pending for the next tick instead of hanging forever.
- * Blank, negative or non-numeric values mean the default. `0` is passed
- * through, and `amqp-connection-manager` reads it as "no timeout".
+ * Blank, zero, negative or non-numeric values mean the default.
  */
 export function outboxPublishTimeoutMs(): number {
-  return parseNonNegativeMs(
+  return parsePositiveMs(
     process.env.OUTBOX_PUBLISH_TIMEOUT_MS,
     DEFAULT_OUTBOX_PUBLISH_TIMEOUT_MS,
   );

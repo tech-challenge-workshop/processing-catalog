@@ -63,13 +63,15 @@ T3
 - Skill: NONE
 
 **Done when**:
-- [ ] Unit: `"0"` → 5000, `"-5"` → 5000, `"  "` → 5000, `"abc"` → 5000, `"250"` → 250. The `"0"` case is seen red first
-- [ ] e2e: with `OUTBOX_PUBLISH_TIMEOUT_MS=0` and an unreachable broker, the drain returns within 7 s and the row stays pending
-- [ ] The backoff's `"0"` → 0 is unchanged
-- [ ] Full gate passes
+- [x] Unit: `"0"` → 5000, `"-5"` → 5000, `"  "` → 5000, `"abc"` → 5000, `"250"` → 250. The `"0"` case is seen red first
+- [x] e2e: with `OUTBOX_PUBLISH_TIMEOUT_MS=0` and an unreachable broker, the drain returns within 7 s and the row stays pending
+- [x] The backoff's `"0"` → 0 is unchanged
+- [x] Full gate passes
 
 **Tests**: unit + integration
 **Gate**: full
+
+**Status**: ✅ Complete. `parsePositiveMs(raw, fallback)` in `rabbitmq.connection.ts` backs `outboxPublishTimeoutMs()`. The existing unit case `"0"` → 0 was changed to `"0"` → 5000 (the spec reverses it) and `"-5"` was added; seen red first on `"0"`. New relay e2e with `OUTBOX_PUBLISH_TIMEOUT_MS=0` and the real `RabbitMQConnection` at `amqp://127.0.0.1:1`: seen red (hung past 15 s), then rejects after ~5 s with the row pending. The backoff's `"0"` → 0 stays pinned in `settle-failed-message.spec.ts`. Full gate: 230 unit (229 + 1), 172 e2e (171 + 1), 0 skipped.
 
 ---
 

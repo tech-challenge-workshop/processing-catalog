@@ -61,9 +61,11 @@ describe('outboxPublishTimeoutMs', () => {
   it.each([
     ['empty', '', 5000],
     ['whitespace only', '  ', 5000],
-    ['zero', '0', 0],
+    // 0 would reach amqp-connection-manager as "no timeout" (ROB-01).
+    ['zero', '0', 5000],
     ['a valid value', '250', 250],
     ['negative', '-1', 5000],
+    ['negative', '-5', 5000],
     ['not a number', 'abc', 5000],
   ])('maps %s (%j) to %d ms', (_label, raw, expected) => {
     process.env.OUTBOX_PUBLISH_TIMEOUT_MS = raw;
