@@ -107,15 +107,15 @@ Decisions of 2026-09-26 are in `context.md` beside this spec.
 
 | Requirement ID | Story | Phase | Status |
 | --- | --- | --- | --- |
-| ROB-01 | P1: Timeout cannot be disabled (V45) | - | Pending |
-| ROB-02 | P2: Malformed `attemptId` to the DLQ (V46) | - | Pending |
-| ROB-03 | P3: Lock release, Fail order, spec note, comment (V47) | - | Pending |
+| ROB-01 | P1: Timeout cannot be disabled (V45) | Tasks | In Tasks |
+| ROB-02 | P2: Malformed `attemptId` to the DLQ (V46) | Tasks | In Tasks |
+| ROB-03 | P3: Lock release, Fail order, spec note, comment (V47) | Tasks | In Tasks |
 
 **ID format:** `[CATEGORY]-[NUMBER]`
 
 **Status values:** Pending → In Design → In Tasks → Implementing → Verified
 
-**Coverage:** 3 total, 0 mapped to tasks, 3 unmapped ⚠️ (mapped in Tasks)
+**Coverage:** 3 total, 3 mapped to tasks, 0 unmapped
 
 ---
 
