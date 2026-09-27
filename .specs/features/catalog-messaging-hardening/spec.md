@@ -77,7 +77,7 @@ Decisions of 2026-09-26 are in `context.md` beside this spec.
 
 **Acceptance Criteria**:
 
-1. IF `ProcessingStarted`, `ProcessingCompleted` or `ProcessingFailed` carries an `attemptId` different from the request's current one THEN the Catalog SHALL change nothing, publish nothing, record the event as processed, and ack it.
+1. IF `ProcessingStarted`, `ProcessingCompleted` or `ProcessingFailed` carries an `attemptId` different from the request's current one THEN the Catalog SHALL change nothing, publish nothing, record the event as processed, and ack it. A `RECEIVED` request has no attempt yet and is never stale; MSG-05 governs it.
 2. IF `ProcessingCompleted` carries no `attemptId` THEN the Catalog SHALL reject it without requeue.
 3. IF `VideoRejected` arrives for a request that is not `RECEIVED` THEN the Catalog SHALL reject it without requeue, and the request SHALL keep its state.
 4. IF `ProcessingFailed` arrives for a `RECEIVED` request THEN the Catalog SHALL reject it without requeue, and the request SHALL keep its state.

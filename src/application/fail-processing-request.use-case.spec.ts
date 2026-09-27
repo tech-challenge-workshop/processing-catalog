@@ -387,5 +387,36 @@ describe('FailProcessingRequestUseCase', () => {
         request.attemptId,
       );
     });
+
+    it('checks for a duplicate under the lock before the stale check, so a racing redelivery records nothing twice', async () => {
+      const request = await queued();
+      // The first delivery has already committed its processed-event record.
+      await repository.markEventProcessed(
+        'failed-stale',
+        request.processingRequestId,
+      );
+      const snapshot = await storedCopy(request.processingRequestId);
+      const entries = outbox.entries.length;
+      // The redelivery raced it: the check before the lock missed the record,
+      // so only the check under the lock can see it.
+      jest
+        .spyOn(repository, 'hasEventBeenProcessed')
+        .mockResolvedValueOnce(false);
+      const mark = jest.spyOn(repository, 'markEventProcessed');
+
+      const returned = await useCase.execute({
+        eventId: 'failed-stale',
+        origin: 'processing',
+        attemptId: randomUUID(),
+        processingRequestId: request.processingRequestId,
+        failureCode: 'PROCESSAMENTO_FALHOU',
+        occurredAt: new Date().toISOString(),
+      });
+
+      expect(mark).not.toHaveBeenCalled();
+      expect(returned).toEqual(snapshot);
+      expect(await storedCopy(request.processingRequestId)).toEqual(snapshot);
+      expect(outbox.entries).toHaveLength(entries);
+    });
   });
 });

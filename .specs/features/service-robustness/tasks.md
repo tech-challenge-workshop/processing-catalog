@@ -117,13 +117,15 @@ T3
 - Skill: NONE
 
 **Done when**:
-- [ ] A session lock that is never released fails the lock-release test (M01b)
-- [ ] Swapping the order in Fail fails the order test (M05d)
-- [ ] The spec note and the comment are in place
-- [ ] Build gate passes
+- [x] A session lock that is never released fails the lock-release test (M01b)
+- [x] Swapping the order in Fail fails the order test (M05d)
+- [x] The spec note and the comment are in place
+- [x] Build gate passes
 
 **Tests**: unit + integration
 **Gate**: build
+
+**Status**: ✅ Complete. Lock release: new e2e in `test/outbox-relay.e2e-spec.ts` - relay A drains its row, three rows are added, relay B on the other DataSource drains and publishes exactly those three. Fail order: new unit test in `fail-processing-request.use-case.spec.ts` - the processed-event record exists, the pre-lock check misses it (race), and a stale `ProcessingFailed` returns the request unchanged without calling `markEventProcessed`. MSG-03 AC1 in `catalog-messaging-hardening/spec.md` now states the `RECEIVED` exemption; the `isUnchanged` doc comment sits above `isUnchanged` again. Both tests were green on first run (they pin existing behaviour). Negatives: M01b (`pg_try_advisory_lock`, a session lock never released) → the lock-release test red (B drained 0, expected 3); M05d (stale check before the under-lock dedup in Fail) → the order test red. Both restored. Build gate: lint, typecheck, 245 unit (244 + 1), 173 e2e (172 + 1), build; 0 skipped.
 
 ---
 
