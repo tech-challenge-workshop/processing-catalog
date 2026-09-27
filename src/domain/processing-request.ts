@@ -28,6 +28,7 @@ export function isFailureCode(value: unknown): value is FailureCode {
 export interface ProcessingRequest {
   processingRequestId: string;
   ownerUserId: string;
+  ownerEmail: string;
   sourceStorageKey: string;
   status: ProcessingRequestStatus;
   attemptId: string | undefined;
@@ -41,6 +42,7 @@ export interface ProcessingRequest {
 
 export interface CreateProcessingRequestInput {
   ownerUserId: string;
+  ownerEmail: string;
   sourceStorageKey: string;
   idempotencyKey?: string;
 }
@@ -53,6 +55,9 @@ export function createProcessingRequest(
   if (!input.ownerUserId || input.ownerUserId.trim().length === 0) {
     throw new ProcessingRequestDomainError('ownerUserId is required');
   }
+  if (!input.ownerEmail || input.ownerEmail.trim().length === 0) {
+    throw new ProcessingRequestDomainError('ownerEmail is required');
+  }
   if (!input.sourceStorageKey || input.sourceStorageKey.trim().length === 0) {
     throw new ProcessingRequestDomainError('sourceStorageKey is required');
   }
@@ -61,6 +66,7 @@ export function createProcessingRequest(
   return {
     processingRequestId: randomUUID(),
     ownerUserId: input.ownerUserId,
+    ownerEmail: input.ownerEmail,
     sourceStorageKey: input.sourceStorageKey,
     status: ProcessingRequestStatus.RECEIVED,
     attemptId: undefined,
