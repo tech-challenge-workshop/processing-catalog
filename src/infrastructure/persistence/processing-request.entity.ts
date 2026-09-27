@@ -12,6 +12,9 @@ export class ProcessingRequestEntity {
   @Column({ name: 'owner_user_id', type: 'text' })
   ownerUserId: string;
 
+  @Column({ name: 'owner_email', type: 'text' })
+  ownerEmail: string;
+
   @Column({ name: 'source_storage_key', type: 'text' })
   sourceStorageKey: string;
 

@@ -55,6 +55,22 @@ describeIfDatabase('TypeOrmProcessingRequestRepository', () => {
     );
   });
 
+  it('round-trips ownerEmail through the database', async () => {
+    const request = createProcessingRequest({
+      ownerUserId: 'user-' + randomUUID(),
+      sourceStorageKey: 'videos/input.mp4',
+      ownerEmail: 'alice@fiapx.local',
+      idempotencyKey: randomUUID(),
+    });
+
+    await repository.save(request);
+    const found = await repository.findByProcessingRequestId(
+      request.processingRequestId,
+    );
+
+    expect(found?.ownerEmail).toBe('alice@fiapx.local');
+  });
+
   it('keeps an absent attemptId absent rather than turning it into an empty string', async () => {
     const request = newRequest();
     await repository.save(request);
