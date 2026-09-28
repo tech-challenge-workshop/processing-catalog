@@ -36,6 +36,7 @@ function toDomain(row: ProcessingRequestEntity): ProcessingRequest {
   return {
     processingRequestId: row.processingRequestId,
     ownerUserId: row.ownerUserId,
+    ownerEmail: row.ownerEmail,
     sourceStorageKey: row.sourceStorageKey,
     status: row.status as ProcessingRequestStatus,
     // Absent stays absent: a null column must not become an empty string.
@@ -52,6 +53,7 @@ function toRow(request: ProcessingRequest): ProcessingRequestEntity {
   const row = new ProcessingRequestEntity();
   row.processingRequestId = request.processingRequestId;
   row.ownerUserId = request.ownerUserId;
+  row.ownerEmail = request.ownerEmail;
   row.sourceStorageKey = request.sourceStorageKey;
   row.status = request.status;
   row.attemptId = request.attemptId ?? null;

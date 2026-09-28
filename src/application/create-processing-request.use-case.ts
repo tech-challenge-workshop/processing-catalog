@@ -16,6 +16,7 @@ import { VideoValidationRequestedEvent } from './event-publisher';
 export interface CreateProcessingRequestInput {
   eventId: string;
   ownerUserId: string;
+  ownerEmail: string;
   sourceStorageKey: string;
   idempotencyKey: string;
 }
@@ -61,6 +62,7 @@ export class CreateProcessingRequestUseCase {
     // Validates the owner and the source before anything is looked up.
     const request = createProcessingRequest({
       ownerUserId: input.ownerUserId,
+      ownerEmail: input.ownerEmail,
       sourceStorageKey: input.sourceStorageKey,
       idempotencyKey: input.idempotencyKey,
     });

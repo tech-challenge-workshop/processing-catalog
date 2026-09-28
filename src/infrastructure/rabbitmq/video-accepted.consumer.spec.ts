@@ -31,6 +31,7 @@ describe('VideoAcceptedConsumer', () => {
     const { request } = await createUseCase.execute({
       eventId: 'create-event-1',
       ownerUserId: 'user-123',
+      ownerEmail: 'user-123@fiapx.local',
       sourceStorageKey: 'videos/input.mp4',
       idempotencyKey: 'create-key-1',
     });

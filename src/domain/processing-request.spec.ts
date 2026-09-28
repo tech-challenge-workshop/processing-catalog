@@ -17,7 +17,11 @@ describe('ProcessingRequest', () => {
     const ownerUserId = 'user-123';
     const sourceStorageKey = 'videos/input.mp4';
 
-    const request = createProcessingRequest({ ownerUserId, sourceStorageKey });
+    const request = createProcessingRequest({
+      ownerUserId,
+      sourceStorageKey,
+      ownerEmail: 'alice@fiapx.local',
+    });
 
     expect(request.status).toBe(ProcessingRequestStatus.RECEIVED);
     expect(request.ownerUserId).toBe(ownerUserId);
@@ -31,11 +35,32 @@ describe('ProcessingRequest', () => {
     expect(request.updatedAt).toBeInstanceOf(Date);
   });
 
+  it('creates a request carrying the owner email it was created with', () => {
+    const request = createProcessingRequest({
+      ownerUserId: 'user-123',
+      sourceStorageKey: 'videos/input.mp4',
+      ownerEmail: 'alice@fiapx.local',
+    });
+
+    expect(request.ownerEmail).toBe('alice@fiapx.local');
+  });
+
+  it('rejects creation when ownerEmail is missing', () => {
+    expect(() =>
+      createProcessingRequest({
+        ownerUserId: 'user-123',
+        sourceStorageKey: 'videos/input.mp4',
+        ownerEmail: '',
+      }),
+    ).toThrow('ownerEmail is required');
+  });
+
   it('rejects creation when ownerUserId is missing', () => {
     expect(() =>
       createProcessingRequest({
         ownerUserId: '',
         sourceStorageKey: 'videos/input.mp4',
+        ownerEmail: 'alice@fiapx.local',
       }),
     ).toThrow('ownerUserId is required');
   });
@@ -44,11 +69,13 @@ describe('ProcessingRequest', () => {
     const keyed = createProcessingRequest({
       ownerUserId: 'user-123',
       sourceStorageKey: 'videos/input.mp4',
+      ownerEmail: 'alice@fiapx.local',
       idempotencyKey: 'key-1',
     });
     const unkeyed = createProcessingRequest({
       ownerUserId: 'user-123',
       sourceStorageKey: 'videos/input.mp4',
+      ownerEmail: 'alice@fiapx.local',
     });
 
     expect(keyed.idempotencyKey).toBe('key-1');
@@ -60,6 +87,7 @@ describe('ProcessingRequest', () => {
       createProcessingRequest({
         ownerUserId: 'user-123',
         sourceStorageKey: '',
+        ownerEmail: 'alice@fiapx.local',
       }),
     ).toThrow('sourceStorageKey is required');
   });
@@ -68,6 +96,7 @@ describe('ProcessingRequest', () => {
     const request = createProcessingRequest({
       ownerUserId: 'user-123',
       sourceStorageKey: 'videos/input.mp4',
+      ownerEmail: 'alice@fiapx.local',
     });
 
     const accepted = acceptProcessingRequest(request);
@@ -88,6 +117,7 @@ describe('ProcessingRequest', () => {
         createProcessingRequest({
           ownerUserId: 'user-123',
           sourceStorageKey: 'videos/input.mp4',
+          ownerEmail: 'alice@fiapx.local',
         }),
       ),
     );
@@ -106,6 +136,7 @@ describe('ProcessingRequest', () => {
     const request = createProcessingRequest({
       ownerUserId: 'user-123',
       sourceStorageKey: 'videos/input.mp4',
+      ownerEmail: 'alice@fiapx.local',
     });
 
     expect(() => completeProcessingRequest(request, 'zips/output.zip')).toThrow(
@@ -121,6 +152,7 @@ describe('ProcessingRequest', () => {
       createProcessingRequest({
         ownerUserId: 'user-123',
         sourceStorageKey: 'videos/input.mp4',
+        ownerEmail: 'alice@fiapx.local',
       }),
     );
     const originalAttemptId = request.attemptId;
@@ -139,6 +171,7 @@ describe('ProcessingRequest', () => {
         createProcessingRequest({
           ownerUserId: 'user-123',
           sourceStorageKey: 'videos/input.mp4',
+          ownerEmail: 'alice@fiapx.local',
         }),
       ),
     );
@@ -155,6 +188,7 @@ describe('ProcessingRequest', () => {
       createProcessingRequest({
         ownerUserId: 'user-123',
         sourceStorageKey: 'videos/input.mp4',
+        ownerEmail: 'alice@fiapx.local',
       }),
     );
 
@@ -162,6 +196,7 @@ describe('ProcessingRequest', () => {
     createProcessingRequest({
       ownerUserId: 'user-123',
       sourceStorageKey: 'videos/input.mp4',
+      ownerEmail: 'alice@fiapx.local',
     });
 
   describe('startProcessingRequest', () => {

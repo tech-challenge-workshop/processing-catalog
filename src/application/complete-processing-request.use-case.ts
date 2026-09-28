@@ -97,6 +97,7 @@ export class CompleteProcessingRequestUseCase {
           eventId: randomUUID(),
           processingRequestId: updated.processingRequestId,
           ownerUserId: updated.ownerUserId,
+          ownerEmail: updated.ownerEmail,
           status: updated.status,
           zipStorageKey: updated.zipStorageKey,
           attemptId: updated.attemptId,

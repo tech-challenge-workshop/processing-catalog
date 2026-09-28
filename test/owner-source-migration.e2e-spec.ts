@@ -39,10 +39,10 @@ describeIfDatabase('owner source migration', () => {
   const insert = (owner: string, source: string, key: string | null) =>
     dataSource.query(
       `INSERT INTO processing_request
-         (processing_request_id, owner_user_id, source_storage_key, status,
-          idempotency_key, created_at, updated_at)
-       VALUES ($1, $2, $3, 'RECEIVED', $4, now(), now())`,
-      [randomUUID(), owner, source, key],
+         (processing_request_id, owner_user_id, owner_email, source_storage_key,
+          status, idempotency_key, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, 'RECEIVED', $5, now(), now())`,
+      [randomUUID(), owner, `${owner}@fiapx.local`, source, key],
     );
 
   beforeAll(async () => {

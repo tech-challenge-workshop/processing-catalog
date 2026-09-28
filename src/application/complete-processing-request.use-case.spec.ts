@@ -34,6 +34,7 @@ describe('CompleteProcessingRequestUseCase', () => {
     const { request } = await createUseCase.execute({
       eventId: randomUUID(),
       ownerUserId: 'user-123',
+      ownerEmail: 'user-123@fiapx.local',
       sourceStorageKey: 'videos/input.mp4',
       idempotencyKey: randomUUID(),
     });
@@ -79,6 +80,7 @@ describe('CompleteProcessingRequestUseCase', () => {
     const published = outbox.recordedTerminalEvents.at(-1);
     expect(published?.processingRequestId).toBe(request.processingRequestId);
     expect(published?.ownerUserId).toBe('user-123');
+    expect(published?.ownerEmail).toBe('user-123@fiapx.local');
     expect(published?.status).toBe(ProcessingRequestStatus.COMPLETED);
     expect(published?.zipStorageKey).toBe('zips/output.zip');
     expect(published?.occurredAt).toBe(occurredAt);

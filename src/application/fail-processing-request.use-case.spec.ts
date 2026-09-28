@@ -33,6 +33,7 @@ describe('FailProcessingRequestUseCase', () => {
       await new CreateProcessingRequestUseCase(repository, unitOfWork).execute({
         eventId: randomUUID(),
         ownerUserId: 'user-123',
+        ownerEmail: 'user-123@fiapx.local',
         sourceStorageKey: 'videos/input.mp4',
         idempotencyKey: randomUUID(),
       })
@@ -62,6 +63,9 @@ describe('FailProcessingRequestUseCase', () => {
     expect(updated.status).toBe(ProcessingRequestStatus.FAILED);
     expect(updated.failureCode).toBe('FORMATO_INVALIDO');
     expect(outbox.recordedTerminalEvents).toHaveLength(before + 1);
+
+    const published = outbox.recordedTerminalEvents.at(-1);
+    expect(published?.ownerEmail).toBe('user-123@fiapx.local');
   });
 
   it('publishes a failure reason and no zipStorageKey', async () => {

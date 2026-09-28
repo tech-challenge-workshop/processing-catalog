@@ -16,6 +16,7 @@ describe('GetOwnedArchiveQuery', () => {
   const received = () =>
     createProcessingRequest({
       ownerUserId: 'alice',
+      ownerEmail: 'alice@fiapx.local',
       sourceStorageKey: 'sources/alice/a.mp4',
     });
 

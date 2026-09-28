@@ -12,6 +12,7 @@ function stored(overrides: Partial<ProcessingRequest>): ProcessingRequest {
   return {
     processingRequestId: '3f1c2a4e-0000-4000-8000-000000000001',
     ownerUserId: 'alice',
+    ownerEmail: 'alice@fiapx.local',
     sourceStorageKey: 'sources/alice/video.mp4',
     status: ProcessingRequestStatus.RECEIVED,
     attemptId: undefined,

@@ -95,6 +95,7 @@ describeIfDatabase('owned processing requests over HTTP (PostgreSQL)', () => {
     const r = {
       ...createProcessingRequest({
         ownerUserId,
+        ownerEmail: `${ownerUserId}@fiapx.local`,
         // One source per request: an owner holds one request per source.
         sourceStorageKey: `sources/${ownerUserId}/${processingRequestId}.mp4`,
       }),

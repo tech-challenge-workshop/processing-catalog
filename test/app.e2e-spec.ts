@@ -76,6 +76,7 @@ describe('AppController (e2e)', () => {
         .post('/processing-requests')
         .send({
           ownerUserId: 'user-123',
+          ownerEmail: 'user-123@fiapx.local',
           sourceStorageKey: 'videos/input.mp4',
           idempotencyKey: 'key-1',
         });
@@ -118,6 +119,7 @@ describe('AppController (e2e)', () => {
         .post('/processing-requests')
         .send({
           ownerUserId: 'user-123',
+          ownerEmail: 'user-123@fiapx.local',
           sourceStorageKey: 'videos/input.mp4',
           idempotencyKey: 'key-1',
         });

@@ -86,6 +86,7 @@ describeIfDatabase(
       const alice = owner('alice');
       const body = {
         ownerUserId: alice,
+        ownerEmail: `${alice}@fiapx.local`,
         sourceStorageKey: `sources/${alice}/a.mp4`,
         idempotencyKey: 'key-1',
       };
@@ -121,11 +122,13 @@ describeIfDatabase(
 
       const first = await create({
         ownerUserId: alice,
+        ownerEmail: `${alice}@fiapx.local`,
         sourceStorageKey: source,
         idempotencyKey: 'key-1',
       });
       const second = await create({
         ownerUserId: alice,
+        ownerEmail: `${alice}@fiapx.local`,
         sourceStorageKey: source,
         idempotencyKey: 'key-2',
       });
@@ -141,12 +144,14 @@ describeIfDatabase(
       const alice = owner('alice');
       await create({
         ownerUserId: alice,
+        ownerEmail: `${alice}@fiapx.local`,
         sourceStorageKey: `sources/${alice}/a.mp4`,
         idempotencyKey: 'key-1',
       });
 
       const res = await create({
         ownerUserId: alice,
+        ownerEmail: `${alice}@fiapx.local`,
         sourceStorageKey: `sources/${alice}/b.mp4`,
         idempotencyKey: 'key-1',
       });
@@ -166,11 +171,13 @@ describeIfDatabase(
       const alice = owner('alice');
       const first = await create({
         ownerUserId: alice,
+        ownerEmail: `${alice}@fiapx.local`,
         sourceStorageKey: `sources/${alice}/a.mp4`,
         idempotencyKey: 'key-1',
       });
       const second = await create({
         ownerUserId: alice,
+        ownerEmail: `${alice}@fiapx.local`,
         sourceStorageKey: `sources/${alice}/b.mp4`,
         idempotencyKey: 'key-2',
       });
@@ -179,6 +186,7 @@ describeIfDatabase(
       // decides: a conflict, not a replay of b.mp4's request.
       const res = await create({
         ownerUserId: alice,
+        ownerEmail: `${alice}@fiapx.local`,
         sourceStorageKey: `sources/${alice}/b.mp4`,
         idempotencyKey: 'key-1',
       });
@@ -204,14 +212,15 @@ describeIfDatabase(
       // Written as a request created before S6: no idempotency key.
       await dataSource.query(
         `INSERT INTO processing_request
-           (processing_request_id, owner_user_id, source_storage_key, status,
-            created_at, updated_at, idempotency_key)
-         VALUES ($1, $2, $3, 'RECEIVED', $4, $4, NULL)`,
-        [preS6Id, alice, source, createdAt],
+           (processing_request_id, owner_user_id, owner_email, source_storage_key,
+            status, created_at, updated_at, idempotency_key)
+         VALUES ($1, $2, $3, $4, 'RECEIVED', $5, $5, NULL)`,
+        [preS6Id, alice, `${alice}@fiapx.local`, source, createdAt],
       );
 
       const res = await create({
         ownerUserId: alice,
+        ownerEmail: `${alice}@fiapx.local`,
         sourceStorageKey: source,
         idempotencyKey: 'key-1',
       });
@@ -244,6 +253,7 @@ describeIfDatabase(
 
         const res = await create({
           ownerUserId: alice,
+          ownerEmail: `${alice}@fiapx.local`,
           sourceStorageKey: `sources/${alice}/a.mp4`,
           idempotencyKey,
         });
@@ -260,9 +270,11 @@ describeIfDatabase(
     );
 
     describe('malformed input', () => {
-      type Field = 'ownerUserId' | 'sourceStorageKey' | 'idempotencyKey';
+      type Field =
+        'ownerUserId' | 'ownerEmail' | 'sourceStorageKey' | 'idempotencyKey';
       const FIELDS: Field[] = [
         'ownerUserId',
+        'ownerEmail',
         'sourceStorageKey',
         'idempotencyKey',
       ];
@@ -272,6 +284,7 @@ describeIfDatabase(
         const ownerUserId = owner('malformed');
         return {
           ownerUserId,
+          ownerEmail: `${ownerUserId}@fiapx.local`,
           sourceStorageKey: `sources/${ownerUserId}/a.mp4`,
           idempotencyKey: 'key-' + randomUUID(),
         };
@@ -361,6 +374,33 @@ describeIfDatabase(
 
         expect(res.status).toBe(201);
         expect((res.body as CreatedBody).ownerUserId).toBe(body.ownerUserId);
+        expect(await written(body)).toEqual({ rows: 1, outbox: 1 });
+      });
+
+      it('answers 400 to a 256-character ownerEmail, and writes nothing', async () => {
+        const body = validBody();
+
+        const res = await create({
+          ...body,
+          ownerEmail: ofLength('email', 256),
+        });
+
+        expect(res.status).toBe(400);
+        expect(res.body).toStrictEqual(
+          badRequest('ownerEmail must be at most 255 characters'),
+        );
+        expect(await written(body)).toEqual({ rows: 0, outbox: 0 });
+      });
+
+      it('accepts a 255-character ownerEmail', async () => {
+        const body = {
+          ...validBody(),
+          ownerEmail: ofLength('email', 255),
+        };
+
+        const res = await create(body);
+
+        expect(res.status).toBe(201);
         expect(await written(body)).toEqual({ rows: 1, outbox: 1 });
       });
 
@@ -469,18 +509,19 @@ describeIfDatabase(
         expect(await written(body)).toEqual({ rows: 1, outbox: 1 });
       });
 
-      // null for every field; missing, empty and blank for the two fields the
-      // S6 cases above do not already cover with their exact message.
+      // null for every field; missing, empty and blank for the fields the S6
+      // cases above do not already cover with their exact message.
       it.each([
         ...FIELDS.map((field) => [field, 'null', null] as const),
-        ...(['ownerUserId', 'sourceStorageKey'] as const).flatMap((field) =>
-          (
-            [
-              ['missing', undefined],
-              ['empty', ''],
-              ['blank', '   '],
-            ] as const
-          ).map(([label, value]) => [field, label, value] as const),
+        ...(['ownerUserId', 'ownerEmail', 'sourceStorageKey'] as const).flatMap(
+          (field) =>
+            (
+              [
+                ['missing', undefined],
+                ['empty', ''],
+                ['blank', '   '],
+              ] as const
+            ).map(([label, value]) => [field, label, value] as const),
         ),
       ])(
         'answers 400 %s is required to a %s value, and writes nothing',
@@ -500,6 +541,7 @@ describeIfDatabase(
       const alice = owner('alice');
       const body = {
         ownerUserId: alice,
+        ownerEmail: `${alice}@fiapx.local`,
         sourceStorageKey: `sources/${alice}/a.mp4`,
         idempotencyKey: 'key-1',
       };
@@ -521,11 +563,13 @@ describeIfDatabase(
 
       const a = await create({
         ownerUserId: alice,
+        ownerEmail: `${alice}@fiapx.local`,
         sourceStorageKey: `sources/${alice}/a.mp4`,
         idempotencyKey: 'shared-key',
       });
       const b = await create({
         ownerUserId: bob,
+        ownerEmail: `${bob}@fiapx.local`,
         sourceStorageKey: `sources/${bob}/a.mp4`,
         idempotencyKey: 'shared-key',
       });

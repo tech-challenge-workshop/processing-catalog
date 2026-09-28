@@ -27,6 +27,7 @@ describeIfDatabase('TypeOrmUnitOfWork', () => {
   const newRequest = () =>
     createProcessingRequest({
       ownerUserId: 'user-' + randomUUID(),
+      ownerEmail: 'owner-' + randomUUID() + '@fiapx.local',
       sourceStorageKey: 'videos/input.mp4',
     });
 

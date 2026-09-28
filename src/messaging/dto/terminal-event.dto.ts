@@ -4,6 +4,7 @@ export interface TerminalEventDto {
   eventId: string;
   processingRequestId: string;
   ownerUserId: string;
+  ownerEmail: string;
   status: ProcessingRequestStatus;
   /** Present when the request completed. Mutually exclusive with failureReason. */
   zipStorageKey?: string;

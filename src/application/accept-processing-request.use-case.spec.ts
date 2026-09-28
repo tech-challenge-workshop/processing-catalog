@@ -29,6 +29,7 @@ describe('AcceptProcessingRequestUseCase', () => {
     const { request } = await createUseCase.execute({
       eventId: randomUUID(),
       ownerUserId: 'user-123',
+      ownerEmail: 'user-123@fiapx.local',
       sourceStorageKey: 'videos/input.mp4',
       idempotencyKey: randomUUID(),
     });
@@ -62,6 +63,7 @@ describe('AcceptProcessingRequestUseCase', () => {
     expect(published?.sourceStorageKey).toBe('videos/input.mp4');
     expect(published?.attemptId).toBe(updated.attemptId);
     expect(published?.occurredAt).toBe(occurredAt);
+    expect(published).not.toHaveProperty('ownerEmail'); // Global Constraint: never on this event
   });
 
   it('is idempotent for a repeated eventId', async () => {

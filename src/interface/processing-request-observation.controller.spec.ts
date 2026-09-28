@@ -46,6 +46,7 @@ describe('ProcessingRequestObservationController (integration)', () => {
   it('returns the current state of an existing request', async () => {
     const stored = createProcessingRequest({
       ownerUserId: 'user-123',
+      ownerEmail: 'user-123@fiapx.local',
       sourceStorageKey: 'videos/input.mp4',
     });
     await repository.save(stored);

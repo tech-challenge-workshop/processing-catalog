@@ -16,6 +16,7 @@ function keyed(
 ): ProcessingRequest {
   return createProcessingRequest({
     ownerUserId,
+    ownerEmail: `${ownerUserId}@fiapx.local`,
     sourceStorageKey,
     idempotencyKey,
   });
@@ -28,6 +29,7 @@ function ownedBy(
 ): ProcessingRequest {
   const request = createProcessingRequest({
     ownerUserId,
+    ownerEmail: `${ownerUserId}@fiapx.local`,
     sourceStorageKey: 'videos/input.mp4',
   });
   const id = processingRequestId ?? request.processingRequestId;
@@ -51,6 +53,7 @@ describe('InMemoryProcessingRequestRepository', () => {
   it('saves a request and finds it by processingRequestId', async () => {
     const request = createProcessingRequest({
       ownerUserId: 'user-123',
+      ownerEmail: 'user-123@fiapx.local',
       sourceStorageKey: 'videos/input.mp4',
     });
 
@@ -65,6 +68,7 @@ describe('InMemoryProcessingRequestRepository', () => {
   it('updates a request in place', async () => {
     const request = createProcessingRequest({
       ownerUserId: 'user-123',
+      ownerEmail: 'user-123@fiapx.local',
       sourceStorageKey: 'videos/input.mp4',
     });
     await repository.save(request);
@@ -98,6 +102,7 @@ describe('InMemoryProcessingRequestRepository', () => {
     const eventId = 'event-456';
     const request = createProcessingRequest({
       ownerUserId: 'user-456',
+      ownerEmail: 'user-456@fiapx.local',
       sourceStorageKey: 'videos/another.mp4',
     });
 
