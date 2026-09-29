@@ -438,9 +438,9 @@ T18
 
 **Done when**:
 
-- [ ] Unit: publish failure increments exactly once per failed attempt (not per tick); gauges reflect mocked relay values; null oldest age → 0
-- [ ] Gate check passes: `npm test && npm run test:e2e`
-- [ ] Test count: 6 new unit tests pass (no silent deletions)
+- [x] Unit: publish failure increments exactly once per failed attempt (not per tick); gauges reflect mocked relay values; null oldest age → 0
+- [x] Gate check passes: `npm test && npm run test:e2e`
+- [x] Test count: 6 new unit tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: full

@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import { catalogMetrics } from '../../observability/metrics';
 import { RabbitMQConnection } from '../rabbitmq/rabbitmq.connection';
 
 export interface PendingOutboxRow {
@@ -36,11 +37,20 @@ export const OUTBOX_RELAY_LOCK_KEY = '-3576818703360397482';
  * so a repeat is absorbed, and losing an event is the worse failure.
  */
 @Injectable()
-export class OutboxRelay {
+export class OutboxRelay implements OnModuleInit {
   constructor(
     private readonly dataSource: DataSource,
     private readonly connection: RabbitMQConnection,
   ) {}
+
+  /**
+   * Feeds the outbox gauges from this relay's own pending queries on every
+   * scrape. Done at module init rather than construction, so only the app's
+   * relay registers - not every instance a test builds.
+   */
+  onModuleInit(): void {
+    catalogMetrics.setOutboxSource(this);
+  }
 
   /**
    * Publishes pending rows. Returns how many reached the broker, or 0 when
@@ -82,6 +92,10 @@ export class OutboxRelay {
             row.payload,
           );
         } catch (error) {
+          // A refusal or a confirm timeout: the row stays pending for the
+          // next tick. Counted here, once per failed attempt - the drain
+          // stops at this row, so a tick never counts twice.
+          catalogMetrics.recordOutboxPublishFailure();
           failed = true;
           failure = error;
           break;
