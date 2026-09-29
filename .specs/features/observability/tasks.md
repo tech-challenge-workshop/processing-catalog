@@ -175,9 +175,11 @@ T18
 
 **Done when**:
 
-- [ ] Migration runs clean on an empty e2e database and applies exactly the one column (verified via the e2e setup in T7's full gate)
-- [ ] Gate check passes: `npm run migration:run` against a scratch database (build gate)
-- [ ] Test count: no new tests (migration layer - matrix; round-trip in T7/T18 e2e)
+- [x] Migration runs clean on an empty e2e database and applies exactly the one column (verified via the e2e setup in T7's full gate)
+- [x] Gate check passes: `npm run migration:run` against a scratch database (build gate)
+- [x] Test count: no new tests (migration layer - matrix; round-trip in T7/T18 e2e)
+
+> Gate note: `npm run migration:run` fails before reaching any migration (pre-existing: `data-source.ts` exports a factory, not the `DataSource` instance the TypeORM CLI requires). The migration was applied, reverted and reapplied on an empty scratch database through `createDataSource().runMigrations()` / `undoLastMigration()` (the path the app uses at boot): exactly `correlation_id varchar(128) NULL` is added, and down drops it. The phase build gate (lint, typecheck, unit, e2e against Postgres, build) passed with the migration applied to the e2e database.
 
 **Tests**: none
 **Gate**: build
