@@ -366,9 +366,9 @@ T18
 
 **Done when**:
 
-- [ ] Unit: counters/gauges behave; labels bounded; reset without duplicate-registration errors
-- [ ] Gate check passes: `npm test`
-- [ ] Test count: 6 new unit tests pass (no silent deletions)
+- [x] Unit: counters/gauges behave; labels bounded; reset without duplicate-registration errors
+- [x] Gate check passes: `npm test`
+- [x] Test count: 6 new unit tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
