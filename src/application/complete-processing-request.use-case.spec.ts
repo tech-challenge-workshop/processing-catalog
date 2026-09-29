@@ -9,6 +9,7 @@ import {
 } from '../domain/processing-request';
 import * as domain from '../domain/processing-request';
 import { InMemoryProcessingRequestRepository } from '../infrastructure/in-memory-processing-request.repository';
+import { correlationContext } from '../observability/correlation-context';
 import { AcceptProcessingRequestUseCase } from './accept-processing-request.use-case';
 import { CompleteProcessingRequestUseCase } from './complete-processing-request.use-case';
 import { CreateProcessingRequestUseCase } from './create-processing-request.use-case';
@@ -26,7 +27,7 @@ describe('CompleteProcessingRequestUseCase', () => {
     useCase = new CompleteProcessingRequestUseCase(repository, unitOfWork);
   });
 
-  const createQueuedRequest = async () => {
+  const createQueuedRequest = async (correlationId?: string) => {
     const createUseCase = new CreateProcessingRequestUseCase(
       repository,
       unitOfWork,
@@ -37,6 +38,7 @@ describe('CompleteProcessingRequestUseCase', () => {
       ownerEmail: 'user-123@fiapx.local',
       sourceStorageKey: 'videos/input.mp4',
       idempotencyKey: randomUUID(),
+      ...(correlationId !== undefined ? { correlationId } : {}),
     });
     const acceptUseCase = new AcceptProcessingRequestUseCase(
       repository,
@@ -280,6 +282,59 @@ describe('CompleteProcessingRequestUseCase', () => {
       expect(await repository.hasEventBeenProcessed('completed-stale')).toBe(
         true,
       );
+    });
+  });
+
+  describe('correlation id (OBS-18)', () => {
+    const complete = (request: domain.ProcessingRequest) =>
+      useCase.execute({
+        eventId: randomUUID(),
+        processingRequestId: request.processingRequestId,
+        attemptId: request.attemptId!,
+        zipStorageKey: 'zips/output.zip',
+        occurredAt: new Date().toISOString(),
+      });
+
+    it('carries the id stored at creation on the terminal event', async () => {
+      const request = await createQueuedRequest('cat-1');
+
+      await complete(request);
+
+      expect(outbox.recordedTerminalEvents).toHaveLength(1);
+      expect(outbox.recordedTerminalEvents[0].correlationId).toBe('cat-1');
+    });
+
+    it('omits the field when the stored request has none', async () => {
+      const request = await createQueuedRequest();
+
+      await complete(request);
+
+      expect(outbox.recordedTerminalEvents).toHaveLength(1);
+      expect(outbox.recordedTerminalEvents[0]).not.toHaveProperty(
+        'correlationId',
+      );
+    });
+
+    it('takes the id from the stored request, not the ambient log context', async () => {
+      const request = await createQueuedRequest('cat-1');
+
+      await correlationContext.runWithCorrelation('consumer-generated', () =>
+        complete(request),
+      );
+
+      expect(outbox.recordedTerminalEvents[0].correlationId).toBe('cat-1');
+    });
+
+    it('keeps the stored id on the completed request', async () => {
+      const request = await createQueuedRequest('cat-1');
+
+      const updated = await complete(request);
+
+      expect(updated.correlationId).toBe('cat-1');
+      const found = await repository.findByProcessingRequestId(
+        request.processingRequestId,
+      );
+      expect(found?.correlationId).toBe('cat-1');
     });
   });
 });
