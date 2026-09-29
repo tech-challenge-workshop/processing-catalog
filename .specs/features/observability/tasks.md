@@ -130,8 +130,8 @@ T18
 
 **Done when**:
 
-- [ ] Module compiles; gate check passes: `npm run lint && npm run typecheck && npm run build`
-- [ ] Test count: no new tests (config layer - matrix)
+- [x] Module compiles; gate check passes: `npm run lint && npm run typecheck && npm run build`
+- [x] Test count: no new tests (config layer - matrix)
 
 **Tests**: none
 **Gate**: build
