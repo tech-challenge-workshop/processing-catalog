@@ -44,6 +44,7 @@ function toDomain(row: ProcessingRequestEntity): ProcessingRequest {
     zipStorageKey: row.zipStorageKey ?? undefined,
     failureCode: (row.failureCode as FailureCode | null) ?? undefined,
     idempotencyKey: row.idempotencyKey ?? undefined,
+    correlationId: row.correlationId ?? undefined,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
@@ -60,6 +61,7 @@ function toRow(request: ProcessingRequest): ProcessingRequestEntity {
   row.zipStorageKey = request.zipStorageKey ?? null;
   row.failureCode = request.failureCode ?? null;
   row.idempotencyKey = request.idempotencyKey ?? null;
+  row.correlationId = request.correlationId ?? null;
   row.createdAt = request.createdAt;
   row.updatedAt = request.updatedAt;
   return row;

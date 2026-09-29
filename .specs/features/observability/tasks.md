@@ -223,10 +223,12 @@ T18
 
 **Done when**:
 
-- [ ] Unit: validation matrix for the new field (missing/empty/blank/127-128-129 chars/non-string → 400 field error; valid → persisted + payload carries it)
-- [ ] Unit: outbox payload omits the field when absent
-- [ ] Gate check passes: `npm test && npm run test:e2e`
-- [ ] Test count: 9 new unit tests pass (no silent deletions)
+- [x] Unit: validation matrix for the new field (missing/empty/blank/127-128-129 chars/non-string → 400 field error; valid → persisted + payload carries it)
+- [x] Unit: outbox payload omits the field when absent
+- [x] Gate check passes: `npm test && npm run test:e2e`
+- [x] Test count: 9 new unit tests pass (no silent deletions)
+
+> Interpretation: "missing" is read as *absent*, which the spec makes valid (validated "when present"; edge case: NULL column → field omitted). Absent is accepted, stored as NULL and omitted from the payload; empty, blank, 129 chars, non-printable and non-string are rejected as `ProcessingRequestDomainError` (mapped to 400 by the controller). The stored value is the trimmed one (L-004).
 
 **Tests**: unit
 **Gate**: full
