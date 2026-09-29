@@ -83,9 +83,9 @@ T18
 
 **Done when**:
 
-- [ ] Concurrent runs are isolated; parser bounds verified at 1/128/129 chars and for number/object/null inputs
-- [ ] Gate check passes: `npm test`
-- [ ] Test count: 10 new unit tests pass (no silent deletions)
+- [x] Concurrent runs are isolated; parser bounds verified at 1/128/129 chars and for number/object/null inputs
+- [x] Gate check passes: `npm test`
+- [x] Test count: 10 new unit tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
