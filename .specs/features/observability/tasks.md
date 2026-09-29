@@ -486,12 +486,15 @@ T18
 
 **Done when**:
 
-- [ ] All assertions above pass against real Postgres
-- [ ] Gate check passes: `npm test && npm run test:e2e && npm run lint && npm run typecheck && npm run build`
-- [ ] Test count: 10 new e2e tests pass (no silent deletions)
+- [x] All assertions above pass against real Postgres
+- [x] Gate check passes: `npm test && npm run test:e2e && npm run lint && npm run typecheck && npm run build`
+- [x] Test count: 10 new e2e tests pass (no silent deletions)
 
 **Tests**: e2e
 **Gate**: full
+
+> Landed as 10 cases in `test/observability.e2e-spec.ts` against real Postgres, with a fake broker standing in for RabbitMQ (as the existing e2e suites do): cat-1 stored and carried by `VideoValidationRequested`, `ProcessingQueued` and the `COMPLETED` terminal event as the relay hands them to the broker; the `FAILED` terminal event carries the stored id, not the consumer's; no id → `NULL` column and the field omitted on every event; a message without an id is handled under a generated UUID and acked; acked and dead-lettered counted apart; seeded pending rows, their age and a refused publish on `/metrics`; broker stopped and database stopped each give `/health` 503 naming the dependency with `/health/live` and `/metrics` 200; every line of a create is JSON with `service`, `timestamp`, `level`, `msg`, the propagated id and no owner email; no access-log line for `/health`, `/health/live`, `/metrics`.
+> The database is "stopped" by destroying the app's `DataSource` (no container-kill helper or health e2e existed to follow), which is what the indicator and the gauges see when Postgres goes away. The consumers emit no log line of their own, so the consumer-log assertions read a line the test logs from inside the use case, i.e. inside the consumer's correlation scope.
 
 **Commit**: `test(catalog): prove the observability slice end to end`
 

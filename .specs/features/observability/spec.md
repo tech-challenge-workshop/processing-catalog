@@ -116,17 +116,17 @@ The Catalog owns the lifecycle and the transactional outbox, but emits no metric
 | OBS-19 | P1: correlationId (consumer context) | Execute (T15) | Implemented |
 | OBS-20 | P1: correlationId (fallback) | Execute (T15) | Implemented |
 | OBS-21 | P1: correlationId (400 on invalid) | Execute (T7, T8) | Implemented |
-| OBS-22 | P1: structured logs | Design | Pending |
+| OBS-22 | P1: structured logs | Execute (T2, T3, T4, T18) | Implemented |
 | OBS-23 | P2: Metrics (exposition set) | Execute (T13, T16, T17) | Implemented |
 | OBS-24 | P2: Metrics (publish failures) | Execute (T13, T16) | Implemented |
 | OBS-25 | P2: Metrics (consumed counter) | Execute (T13, T14, T15) | Implemented |
-| OBS-26 | P2: Health (not-ready on dependency loss) | Execute (T17) | In progress |
+| OBS-26 | P2: Health (not-ready on dependency loss) | Execute (T17, T18) | Implemented |
 | OBS-27 | P2: Health (ready when healthy) | Execute (T17) | Implemented |
-| OBS-28 | P2: Health/Metrics (no auth, no noise) | Execute (T17) | In progress |
+| OBS-28 | P2: Health/Metrics (no auth, no noise) | Execute (T2, T17, T18) | Implemented |
 
 **ID format:** `OBS-[NUMBER]` — `fiap-x-api` owns OBS-01..15; this repo owns OBS-16..30; `processing-worker` OBS-31..45; `notification-service` OBS-46..60; `fiap-x-platform` OBS-61..75.
 
-**Coverage:** 13 total, 0 mapped to tasks, 13 unmapped (mapping happens in Tasks).
+**Coverage:** 13 total, 13 mapped to tasks, 0 unmapped.
 
 ---
 
