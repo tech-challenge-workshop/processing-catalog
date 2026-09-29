@@ -85,11 +85,36 @@ jobs:
           path: coverage/
           if-no-files-found: ignore
 
+  # Builds linux/amd64 and linux/arm64 on every run; pushes to GHCR only on
+  # a push to main, as :<sha> and :main (the tag the local kind cluster pulls,
+  # fiap-x-platform AD-018). Pull requests build without pushing. The job
+  # authenticates with the workflow's GITHUB_TOKEN, never a personal token.
   image:
     needs: quality
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@v4
-      - name: Build the container image
-        run: docker build -t ${{ github.event.repository.name }}:ci .
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+      - name: Log in to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build the container image (push on main)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          tags: |
+            ghcr.io/tech-challenge-workshop/processing-catalog:${{ github.sha }}
+            ghcr.io/tech-challenge-workshop/processing-catalog:main
+          labels: |
+            org.opencontainers.image.source=https://github.com/tech-challenge-workshop/processing-catalog
