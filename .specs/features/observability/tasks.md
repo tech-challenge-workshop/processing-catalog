@@ -412,13 +412,15 @@ T18
 
 **Done when**:
 
-- [ ] Unit (helper): context set from a valid message id, cleared after; absent/invalid (number/object) → generated id, handler still runs (L-010)
-- [ ] Unit (one consumer per family): `fiapx_events_consumed_total` gets the right label through the wrapped path
-- [ ] Gate check passes: `npm test && npm run test:e2e`
-- [ ] Test count: 9 new unit tests pass (no silent deletions)
+- [x] Unit (helper): context set from a valid message id, cleared after; absent/invalid (number/object) → generated id, handler still runs (L-010)
+- [x] Unit (one consumer per family): `fiapx_events_consumed_total` gets the right label through the wrapped path
+- [x] Gate check passes: `npm test && npm run test:e2e`
+- [x] Test count: 9 new unit tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: full
+
+> Landed with 24 unit tests rather than 9: the helper's L-010 matrix runs one case per invalid shape (number, object, null, blank, 129 chars, non-printable), and the consumer-path suite (`src/infrastructure/rabbitmq/consumer-observability.spec.ts`) drives all five consumers through their real channel callback for both the acked and the dead-lettered label. Consumers now settle through `settleMessage` (T14) inside `withMessageCorrelation`, so the ack is counted at the same point as the nack. A requeue is not counted: `outcome` is bounded to `acked|dead_lettered` (OBS-23), and the redelivery is counted when it settles.
 
 **Commit**: `feat(catalog): propagate the correlation id through consumers`
 

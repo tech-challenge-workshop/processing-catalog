@@ -6,7 +6,8 @@ import {
 } from '../../domain/processing-request';
 import { VideoRejectedDto } from '../../messaging/dto';
 import { RabbitMQConnection } from './rabbitmq.connection';
-import { settleFailedMessage } from './settle-failed-message';
+import { withMessageCorrelation } from '../messaging/with-correlation';
+import { settleMessage } from './settle-failed-message';
 
 @Injectable()
 export class VideoRejectedConsumer implements OnModuleInit {
@@ -23,9 +24,12 @@ export class VideoRejectedConsumer implements OnModuleInit {
         return;
       }
 
-      void this.handleMessage(message.content.toString())
-        .then(() => channel.ack(message))
-        .catch((error) => settleFailedMessage(channel, message, error));
+      const content = message.content.toString();
+      void withMessageCorrelation(content, () =>
+        settleMessage(channel, message, 'VideoRejected', () =>
+          this.handleMessage(content),
+        ),
+      );
     });
   }
 

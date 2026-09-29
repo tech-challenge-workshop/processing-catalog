@@ -113,13 +113,13 @@ The Catalog owns the lifecycle and the transactional outbox, but emits no metric
 | OBS-16 | P1: correlationId (persist) | Execute (T6, T7) | Implemented |
 | OBS-17 | P1: correlationId (published events) | Execute (T7, T9) | Implemented |
 | OBS-18 | P1: correlationId (terminal event) | Execute (T10, T11, T12) | Implemented |
-| OBS-19 | P1: correlationId (consumer context) | Design | Pending |
-| OBS-20 | P1: correlationId (fallback) | Design | Pending |
+| OBS-19 | P1: correlationId (consumer context) | Execute (T15) | Implemented |
+| OBS-20 | P1: correlationId (fallback) | Execute (T15) | Implemented |
 | OBS-21 | P1: correlationId (400 on invalid) | Execute (T7, T8) | Implemented |
 | OBS-22 | P1: structured logs | Design | Pending |
 | OBS-23 | P2: Metrics (exposition set) | Execute (T13) | In progress |
 | OBS-24 | P2: Metrics (publish failures) | Execute (T13) | In progress |
-| OBS-25 | P2: Metrics (consumed counter) | Execute (T13, T14) | In progress |
+| OBS-25 | P2: Metrics (consumed counter) | Execute (T13, T14, T15) | Implemented |
 | OBS-26 | P2: Health (not-ready on dependency loss) | Design | Pending |
 | OBS-27 | P2: Health (ready when healthy) | Design | Pending |
 | OBS-28 | P2: Health/Metrics (no auth, no noise) | Design | Pending |

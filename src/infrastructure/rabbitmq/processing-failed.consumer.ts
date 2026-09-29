@@ -7,7 +7,8 @@ import {
 import { ProcessingFailedDto } from '../../messaging/dto';
 import { isValidAttemptId } from './attempt-id';
 import { RabbitMQConnection } from './rabbitmq.connection';
-import { settleFailedMessage } from './settle-failed-message';
+import { withMessageCorrelation } from '../messaging/with-correlation';
+import { settleMessage } from './settle-failed-message';
 
 @Injectable()
 export class ProcessingFailedConsumer implements OnModuleInit {
@@ -24,9 +25,12 @@ export class ProcessingFailedConsumer implements OnModuleInit {
         return;
       }
 
-      void this.handleMessage(message.content.toString())
-        .then(() => channel.ack(message))
-        .catch((error) => settleFailedMessage(channel, message, error));
+      const content = message.content.toString();
+      void withMessageCorrelation(content, () =>
+        settleMessage(channel, message, 'ProcessingFailed', () =>
+          this.handleMessage(content),
+        ),
+      );
     });
   }
 
