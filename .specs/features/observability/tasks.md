@@ -500,6 +500,13 @@ T18
 
 ---
 
+## Post-verification fixes
+
+- **Fix 1 (OBS-16, sensor M8)**: `test/create-processing-request-route.e2e-spec.ts` now creates with a 128-character `correlationId` and asserts 201 with the whole value on the row and on its `VideoValidationRequested` outbox payload, plus `information_schema.columns` reporting `correlation_id` as `character_maximum_length = 128`, `is_nullable = 'YES'`. Re-running M8 (`varchar(128)` → `varchar(64)`) in a scratch worktree, with the migration rolled back in the shared e2e DB so the mutant actually applied, fails the case (500 instead of 201). The DB was restored to 128 afterwards. +1 e2e.
+  **Commit**: `test(catalog): prove the correlation id column holds 128 chars`
+
+---
+
 ## Phase Execution Map
 
 ```

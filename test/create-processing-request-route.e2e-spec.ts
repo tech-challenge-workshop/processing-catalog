@@ -574,6 +574,31 @@ describeIfDatabase(
         ]);
       });
 
+      it('stores a 128 characters id whole, in a nullable varchar(128) column', async () => {
+        const correlationId = 'c'.repeat(128);
+        const body = { ...validBody(), correlationId };
+
+        const res = await create(body);
+
+        expect(res.status).toBe(201);
+        expect(await stored(body.ownerUserId)).toEqual([
+          { column: correlationId, payload: correlationId },
+        ]);
+        const columns: {
+          character_maximum_length: number;
+          is_nullable: string;
+        }[] = await dataSource.query(
+          `SELECT character_maximum_length, is_nullable
+             FROM information_schema.columns
+            WHERE table_schema = 'catalog'
+              AND table_name = 'processing_request'
+              AND column_name = 'correlation_id'`,
+        );
+        expect(columns).toEqual([
+          { character_maximum_length: 128, is_nullable: 'YES' },
+        ]);
+      });
+
       it('answers 400 in the field-error shape to invalid ids, and writes nothing', async () => {
         for (const correlationId of ['', '   ', 'c'.repeat(129), 42, null]) {
           const body = validBody();
