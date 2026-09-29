@@ -119,6 +119,10 @@ export class FailProcessingRequestUseCase {
           failureReason: failureReasonFor(input.failureCode),
           attemptId: updated.attemptId,
           occurredAt: input.occurredAt,
+          // From the stored request, never the consumer's log context.
+          ...(updated.correlationId !== undefined
+            ? { correlationId: updated.correlationId }
+            : {}),
         },
       );
       await ctx.requests.markEventProcessed(

@@ -112,7 +112,7 @@ The Catalog owns the lifecycle and the transactional outbox, but emits no metric
 | --- | --- | --- | --- |
 | OBS-16 | P1: correlationId (persist) | Execute (T6, T7) | Implemented |
 | OBS-17 | P1: correlationId (published events) | Execute (T7, T9) | Implemented |
-| OBS-18 | P1: correlationId (terminal event) | Execute (T10, T11, T12) | In progress |
+| OBS-18 | P1: correlationId (terminal event) | Execute (T10, T11, T12) | Implemented |
 | OBS-19 | P1: correlationId (consumer context) | Design | Pending |
 | OBS-20 | P1: correlationId (fallback) | Design | Pending |
 | OBS-21 | P1: correlationId (400 on invalid) | Execute (T7, T8) | Implemented |
