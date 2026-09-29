@@ -274,9 +274,9 @@ T18
 
 **Done when**:
 
-- [ ] Unit: published `ProcessingQueued` carries the stored id; omits when NULL
-- [ ] Gate check passes: `npm test && npm run test:e2e`
-- [ ] Test count: 4 new unit tests pass (no silent deletions)
+- [x] Unit: published `ProcessingQueued` carries the stored id; omits when NULL
+- [x] Gate check passes: `npm test && npm run test:e2e`
+- [x] Test count: 4 new unit tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: full
