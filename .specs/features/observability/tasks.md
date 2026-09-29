@@ -461,12 +461,14 @@ T18
 
 **Done when**:
 
-- [ ] E2E (T18 sweep): `/health` 200/503 semantics unchanged, `/health/live` 200, `/metrics` 200 with all families
-- [ ] Gate check passes: `npm test && npm run test:e2e`
-- [ ] Test count: 3 new e2e cases pass (no silent deletions)
+- [x] E2E (T18 sweep): `/health` 200/503 semantics unchanged, `/health/live` 200, `/metrics` 200 with all families
+- [x] Gate check passes: `npm test && npm run test:e2e`
+- [x] Test count: 3 new e2e cases pass (no silent deletions)
 
 **Tests**: e2e
 **Gate**: full
+
+> Landed in `test/health-and-metrics.e2e-spec.ts` (real Postgres, broker health from a switchable connection as in `composition.e2e-spec.ts`): both up → `/health` 200 `{status:'ok',rabbitmq:'up',database:'up'}` and `/health/live` 200; broker down → `/health` 503 `{status:'error',rabbitmq:'down',database:'up'}` while `/health/live` stays 200; `/metrics` 200 with `Content-Type: text/plain; version=0.0.4` and every fiapx family, no credentials sent. The database-down case is T18's.
 
 **Commit**: `feat(catalog): add the liveness endpoint and metrics exposition`
 
