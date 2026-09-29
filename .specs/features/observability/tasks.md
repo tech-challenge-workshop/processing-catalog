@@ -504,6 +504,8 @@ T18
 
 - **Fix 1 (OBS-16, sensor M8)**: `test/create-processing-request-route.e2e-spec.ts` now creates with a 128-character `correlationId` and asserts 201 with the whole value on the row and on its `VideoValidationRequested` outbox payload, plus `information_schema.columns` reporting `correlation_id` as `character_maximum_length = 128`, `is_nullable = 'YES'`. Re-running M8 (`varchar(128)` → `varchar(64)`) in a scratch worktree, with the migration rolled back in the shared e2e DB so the mutant actually applied, fails the case (500 instead of 201). The DB was restored to 128 afterwards. +1 e2e.
   **Commit**: `test(catalog): prove the correlation id column holds 128 chars`
+- **Fix 2 (design.md CatalogMetrics, "same middleware pattern as the API")**: `fiapx_http_requests_total` / `fiapx_http_request_duration_seconds` were registered but never recorded. `src/observability/http-metrics.middleware.ts` ports the API's `HttpMetricsMiddleware`: on response finish it records `{method, route, status}` with the matched route template (`req.route.path`, `'unmatched'` when none matched, so ids never become labels) and swallows counting errors; wired after `CorrelationMiddleware` for `'*'` in `AppModule`. Like the API, it does not exclude `/metrics` or the health endpoints from the HTTP counters (the API excludes them from the access log only; OBS-28 is about access-log lines, which stay excluded). +4 unit (mirroring the API spec, plus a no-raw-path assertion) and +1 e2e in `test/health-and-metrics.e2e-spec.ts` (a real POST 400 and an owner GET 404 show up on `/metrics` under their templates, never the raw owner id or path).
+  **Commit**: `feat(catalog): record http request metrics`
 
 ---
 

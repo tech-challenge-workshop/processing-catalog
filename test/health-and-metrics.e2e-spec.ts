@@ -8,6 +8,7 @@ import type { Server } from 'http';
 import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { RabbitMQConnection } from '../src/infrastructure/rabbitmq/rabbitmq.connection';
+import { catalogMetrics } from '../src/observability/metrics';
 
 /** A broker connection whose health the test decides. */
 class SwitchableConnection {
@@ -93,6 +94,31 @@ describeIfDatabase(
       ]) {
         expect(response.text).toContain(`# TYPE ${family} `);
       }
+    });
+
+    it('counts served requests by route template on /metrics, never by raw path', async () => {
+      catalogMetrics.resetMetrics();
+      const ownerUserId = 'owner-http-metrics';
+
+      const read = await http().get(
+        `/owners/${ownerUserId}/processing-requests/not-a-uuid`,
+      );
+      const created = await http().post('/processing-requests').send({});
+
+      expect(read.status).toBe(404);
+      expect(created.status).toBe(400);
+      const response = await http().get('/metrics');
+      expect(response.text).toContain(
+        'fiapx_http_requests_total{method="POST",route="/processing-requests",status="400"} 1',
+      );
+      expect(response.text).toContain(
+        'fiapx_http_request_duration_seconds_count{method="POST",route="/processing-requests",status="400"} 1',
+      );
+      expect(response.text).toContain(
+        'fiapx_http_requests_total{method="GET",route="/owners/:ownerUserId/processing-requests/:id",status="404"} 1',
+      );
+      expect(response.text).not.toContain(ownerUserId);
+      expect(response.text).not.toContain('not-a-uuid');
     });
   },
 );

@@ -42,6 +42,7 @@ import { GetOwnedProcessingRequestQuery } from './application/get-owned-processi
 import { GetOwnedArchiveQuery } from './application/get-owned-archive.query';
 import { ObservabilityModule } from './observability/observability.module';
 import { CorrelationMiddleware } from './observability/correlation.middleware';
+import { HttpMetricsMiddleware } from './observability/http-metrics.middleware';
 
 const isLocalIntegration = () => process.env.LOCAL_INTEGRATION === 'true';
 
@@ -139,6 +140,6 @@ const isLocalIntegration = () => process.env.LOCAL_INTEGRATION === 'true';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(CorrelationMiddleware).forRoutes('*');
+    consumer.apply(CorrelationMiddleware, HttpMetricsMiddleware).forRoutes('*');
   }
 }
