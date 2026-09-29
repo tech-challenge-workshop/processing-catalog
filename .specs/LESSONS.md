@@ -78,6 +78,36 @@ Seen once or not yet corroborated. Tracked, not trusted.
 - evidence: src/infrastructure/rabbitmq/rabbitmq.connection.ts:58 (config)
 - last seen: 2026-09-27T00:57:44Z
 
+### L-012 - Round-trip a value at its maximum validated length through the real database so a column narrower than the validator bound fails a test.
+- signal: `surviving_mutant` · recurrence: 1 feature(s) · scope: `persistence` · harmful: 0
+- features: observability
+- evidence: M8 src/infrastructure/persistence/migrations/1789959000000-AddCorrelationId.ts:12 (persistence)
+- last seen: 2026-09-29T01:41:27Z
+
+### L-013 - When a counter is labelled by settlement outcome, the spec must say whether a requeue counts as a settlement.
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `messaging` · harmful: 0
+- features: observability
+- evidence: OBS-25 src/infrastructure/rabbitmq/settle-failed-message.ts:99 (messaging)
+- last seen: 2026-09-29T01:41:27Z
+
+### L-014 - When every log line must carry the current correlation id, the spec must say what lines emitted outside any request or message scope carry.
+- signal: `spec_precision_gap` · recurrence: 1 feature(s) · scope: `observability` · harmful: 0
+- features: observability
+- evidence: OBS-22 src/observability/logger.config.ts:47 (observability)
+- last seen: 2026-09-29T01:41:27Z
+
+### L-015 - Pino wildcard redact paths need a parent key, so list the bare root key and each nesting depth the logged shapes use.
+- signal: `spec_deviation` · recurrence: 1 feature(s) · scope: `observability` · harmful: 0
+- features: observability
+- evidence: SPEC_DEVIATION src/observability/logger.config.ts:7 (observability)
+- last seen: 2026-09-29T01:41:27Z
+
+### L-016 - Build environment-dependent module config in a factory at app creation, not at import, so test bootstraps can set the environment first.
+- signal: `spec_deviation` · recurrence: 1 feature(s) · scope: `observability` · harmful: 0
+- features: observability
+- evidence: SPEC_DEVIATION src/observability/observability.module.ts:9 (observability)
+- last seen: 2026-09-29T01:41:27Z
+
 ## Quarantined (failed when applied - ignore)
 
 A confirmed lesson that recurred alongside failure. Kept for the maintainer to review.

@@ -5,6 +5,7 @@ import {
 import { randomUUID } from 'crypto';
 import { ProcessingRequestStatus } from '../domain/processing-request';
 import { InMemoryProcessingRequestRepository } from '../infrastructure/in-memory-processing-request.repository';
+import { correlationContext } from '../observability/correlation-context';
 import { AcceptProcessingRequestUseCase } from './accept-processing-request.use-case';
 import { CreateProcessingRequestUseCase } from './create-processing-request.use-case';
 
@@ -21,7 +22,7 @@ describe('AcceptProcessingRequestUseCase', () => {
     useCase = new AcceptProcessingRequestUseCase(repository, unitOfWork);
   });
 
-  const createRequest = async () => {
+  const createRequest = async (correlationId?: string) => {
     const createUseCase = new CreateProcessingRequestUseCase(
       repository,
       unitOfWork,
@@ -32,6 +33,7 @@ describe('AcceptProcessingRequestUseCase', () => {
       ownerEmail: 'user-123@fiapx.local',
       sourceStorageKey: 'videos/input.mp4',
       idempotencyKey: randomUUID(),
+      ...(correlationId !== undefined ? { correlationId } : {}),
     });
     return request;
   };
@@ -144,5 +146,56 @@ describe('AcceptProcessingRequestUseCase', () => {
     expect(await repository.hasEventBeenProcessed('accepted-event-6')).toBe(
       false,
     );
+  });
+
+  describe('correlation id (OBS-17)', () => {
+    const accept = (processingRequestId: string) =>
+      useCase.execute({
+        eventId: randomUUID(),
+        processingRequestId,
+        occurredAt: new Date().toISOString(),
+      });
+
+    it('carries the stored id on ProcessingQueued', async () => {
+      const request = await createRequest('cat-1');
+
+      await accept(request.processingRequestId);
+
+      expect(outbox.recordedProcessingQueued).toHaveLength(1);
+      expect(outbox.recordedProcessingQueued[0].correlationId).toBe('cat-1');
+    });
+
+    it('omits the field when the stored request has none', async () => {
+      const request = await createRequest();
+
+      await accept(request.processingRequestId);
+
+      expect(outbox.recordedProcessingQueued).toHaveLength(1);
+      expect(outbox.recordedProcessingQueued[0]).not.toHaveProperty(
+        'correlationId',
+      );
+    });
+
+    it('takes the id from the stored request, not the ambient log context', async () => {
+      const request = await createRequest('cat-1');
+
+      await correlationContext.runWithCorrelation('consumer-generated', () =>
+        accept(request.processingRequestId),
+      );
+
+      expect(outbox.recordedProcessingQueued[0].correlationId).toBe('cat-1');
+    });
+
+    it('keeps the stored id on the accepted request', async () => {
+      const request = await createRequest('cat-1');
+
+      const updated = await accept(request.processingRequestId);
+
+      expect(updated.correlationId).toBe('cat-1');
+      const found = await repository.findByProcessingRequestId(
+        request.processingRequestId,
+      );
+      expect(found?.correlationId).toBe('cat-1');
+    });
   });
 });

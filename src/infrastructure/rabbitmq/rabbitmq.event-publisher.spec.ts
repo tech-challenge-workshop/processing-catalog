@@ -1,4 +1,5 @@
 import { ProcessingRequestStatus } from '../../domain/processing-request';
+import { type TerminalEventDto } from '../../messaging/dto';
 import { RabbitMQEventPublisher } from './rabbitmq.event-publisher';
 import { type RabbitMQConnection } from './rabbitmq.connection';
 
@@ -71,5 +72,28 @@ describe('RabbitMQEventPublisher', () => {
       'terminal.event',
       event,
     );
+  });
+
+  it('publishes TerminalEvent carrying the correlation id (OBS-18)', async () => {
+    // Typed as the DTO: the field must be part of the contract to compile.
+    const event: TerminalEventDto = {
+      eventId: 'event-4',
+      processingRequestId: 'req-4',
+      ownerUserId: 'user-4',
+      ownerEmail: 'user-4@fiapx.local',
+      status: ProcessingRequestStatus.COMPLETED,
+      zipStorageKey: 'zips/output.zip',
+      occurredAt: new Date().toISOString(),
+      correlationId: 'cat-1',
+    };
+
+    await publisher.publishTerminalEvent(event);
+
+    const [, , data] = sendToQueueMock.mock.calls[0] as [
+      string,
+      string,
+      TerminalEventDto,
+    ];
+    expect(data.correlationId).toBe('cat-1');
   });
 });

@@ -13,4 +13,6 @@ export interface TerminalEventDto {
   /** Absent when the request failed before any attempt started. */
   attemptId?: string;
   occurredAt: string;
+  /** The stored request's trace id. Omitted, never null, when it has none. */
+  correlationId?: string;
 }

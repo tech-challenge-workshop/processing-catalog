@@ -19,6 +19,7 @@ function stored(overrides: Partial<ProcessingRequest>): ProcessingRequest {
     zipStorageKey: undefined,
     failureCode: undefined,
     idempotencyKey: undefined,
+    correlationId: undefined,
     createdAt,
     updatedAt,
     ...overrides,

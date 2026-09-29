@@ -1,9 +1,11 @@
 import { ProcessingRequestDomainError } from '../../domain/processing-request';
+import { catalogMetrics } from '../../observability/metrics';
 import {
   DEFAULT_RETRY_BACKOFF_MS,
   isPermanentFailure,
   retryBackoffMs,
   settleFailedMessage,
+  settleMessage,
 } from './settle-failed-message';
 
 describe('settleFailedMessage', () => {
@@ -132,5 +134,115 @@ describe('retryBackoffMs', () => {
   it('maps unset to 1000 ms', () => {
     delete process.env.RABBITMQ_RETRY_BACKOFF_MS;
     expect(retryBackoffMs()).toBe(1000);
+  });
+});
+
+describe('settleMessage (OBS-25)', () => {
+  const message = { content: Buffer.from('{}') };
+
+  const channel = () => ({ ack: jest.fn(), nack: jest.fn() });
+
+  const consumed = async () =>
+    (await catalogMetrics.metrics())
+      .split('\n')
+      .filter((line) => line.startsWith('fiapx_events_consumed_total{'));
+
+  beforeEach(() => {
+    catalogMetrics.resetMetrics();
+  });
+
+  it('acks a handled message and counts it once as acked under the caller event', async () => {
+    const ch = channel();
+
+    await settleMessage(
+      ch,
+      message,
+      'VideoAccepted',
+      () => Promise.resolve(),
+      0,
+    );
+
+    expect(ch.ack).toHaveBeenCalledWith(message);
+    expect(ch.nack).not.toHaveBeenCalled();
+    expect(await consumed()).toEqual([
+      'fiapx_events_consumed_total{event="VideoAccepted",outcome="acked"} 1',
+    ]);
+  });
+
+  it('dead-letters a permanent failure and counts it once as dead_lettered', async () => {
+    const ch = channel();
+
+    await settleMessage(
+      ch,
+      message,
+      'ProcessingFailed',
+      () => Promise.reject(new ProcessingRequestDomainError('bad payload')),
+      0,
+    );
+
+    expect(ch.ack).not.toHaveBeenCalled();
+    expect(ch.nack).toHaveBeenCalledWith(message, false, false);
+    expect(await consumed()).toEqual([
+      'fiapx_events_consumed_total{event="ProcessingFailed",outcome="dead_lettered"} 1',
+    ]);
+  });
+
+  it('dead-letters a body that is not JSON and counts it as dead_lettered', async () => {
+    const ch = channel();
+
+    await settleMessage(
+      ch,
+      message,
+      'VideoRejected',
+      () =>
+        Promise.resolve().then(() => {
+          JSON.parse('{not json');
+        }),
+      0,
+    );
+
+    expect(ch.nack).toHaveBeenCalledWith(message, false, false);
+    expect(await consumed()).toEqual([
+      'fiapx_events_consumed_total{event="VideoRejected",outcome="dead_lettered"} 1',
+    ]);
+  });
+
+  it('requeues a transient failure without counting it, since the message is not settled yet', async () => {
+    const ch = channel();
+
+    await settleMessage(
+      ch,
+      message,
+      'ProcessingStarted',
+      () => Promise.reject(new Error('connection refused')),
+      0,
+    );
+
+    expect(ch.ack).not.toHaveBeenCalled();
+    expect(ch.nack).toHaveBeenCalledWith(message, false, true);
+    expect(await consumed()).toEqual([]);
+  });
+
+  it('counts a requeued message exactly once when its redelivery is acked', async () => {
+    const ch = channel();
+
+    await settleMessage(
+      ch,
+      message,
+      'ProcessingCompleted',
+      () => Promise.reject(new Error('connection refused')),
+      0,
+    );
+    await settleMessage(
+      ch,
+      message,
+      'ProcessingCompleted',
+      () => Promise.resolve(),
+      0,
+    );
+
+    expect(await consumed()).toEqual([
+      'fiapx_events_consumed_total{event="ProcessingCompleted",outcome="acked"} 1',
+    ]);
   });
 });

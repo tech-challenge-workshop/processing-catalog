@@ -355,4 +355,73 @@ describe('CreateProcessingRequestUseCase', () => {
       ).resolves.toBe(false);
     });
   });
+
+  describe('correlation id (OBS-16, OBS-17, OBS-21)', () => {
+    const input = (correlationId?: unknown) => ({
+      eventId: 'event-' + Math.random().toString(36).slice(2),
+      ownerUserId: 'alice',
+      ownerEmail: 'alice@fiapx.local',
+      sourceStorageKey: 'sources/alice/a.mp4',
+      idempotencyKey: 'key-1',
+      ...(correlationId !== undefined
+        ? { correlationId: correlationId as string }
+        : {}),
+    });
+
+    it.each([
+      ['a short id', 'cat-1'],
+      ['127 characters', 'c'.repeat(127)],
+      ['128 characters', 'c'.repeat(128)],
+    ])(
+      'persists %s on the request and carries it on VideoValidationRequested',
+      async (_label, correlationId) => {
+        const { request } = await useCase.execute(input(correlationId));
+
+        const stored = await repository.findByProcessingRequestId(
+          request.processingRequestId,
+        );
+        expect(stored?.correlationId).toBe(correlationId);
+        expect(outbox.recordedValidationRequests).toHaveLength(1);
+        expect(outbox.recordedValidationRequests[0].correlationId).toBe(
+          correlationId,
+        );
+      },
+    );
+
+    it('stores no id and omits the field from the payload when absent', async () => {
+      const { request } = await useCase.execute(input());
+
+      const stored = await repository.findByProcessingRequestId(
+        request.processingRequestId,
+      );
+      expect(stored?.correlationId).toBeUndefined();
+      expect(outbox.recordedValidationRequests).toHaveLength(1);
+      expect(outbox.recordedValidationRequests[0]).not.toHaveProperty(
+        'correlationId',
+      );
+    });
+
+    it.each([
+      ['empty', ''],
+      ['blank', '   '],
+      ['129 characters', 'c'.repeat(129)],
+      ['non-printable', 'cat\n1'],
+      ['a number', 42],
+    ])(
+      'rejects a %s correlation id without persisting or publishing',
+      async (_label, correlationId) => {
+        const result = useCase.execute(input(correlationId));
+
+        await expect(result).rejects.toBeInstanceOf(
+          ProcessingRequestDomainError,
+        );
+        await expect(result).rejects.toThrow(
+          'correlationId must be 1 to 128 printable ASCII characters',
+        );
+
+        await expect(repository.countByOwner('alice')).resolves.toBe(0);
+        expect(outbox.entries).toHaveLength(0);
+      },
+    );
+  });
 });

@@ -33,6 +33,15 @@ export class ProcessingRequestEntity {
   @Column({ name: 'idempotency_key', type: 'text', nullable: true })
   idempotencyKey: string | null;
 
+  /** The pipeline's trace id, as the API originated it. Absent before S8. */
+  @Column({
+    name: 'correlation_id',
+    type: 'varchar',
+    length: 128,
+    nullable: true,
+  })
+  correlationId: string | null;
+
   @Column({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 

@@ -11,6 +11,7 @@ import {
 } from '../domain/processing-request';
 import { failureReasonFor } from '../domain/failure-reason';
 import { InMemoryProcessingRequestRepository } from '../infrastructure/in-memory-processing-request.repository';
+import { correlationContext } from '../observability/correlation-context';
 import { AcceptProcessingRequestUseCase } from './accept-processing-request.use-case';
 import { CreateProcessingRequestUseCase } from './create-processing-request.use-case';
 import { FailProcessingRequestUseCase } from './fail-processing-request.use-case';
@@ -28,7 +29,7 @@ describe('FailProcessingRequestUseCase', () => {
     useCase = new FailProcessingRequestUseCase(repository, unitOfWork);
   });
 
-  const received = async () =>
+  const received = async (correlationId?: string) =>
     (
       await new CreateProcessingRequestUseCase(repository, unitOfWork).execute({
         eventId: randomUUID(),
@@ -36,11 +37,12 @@ describe('FailProcessingRequestUseCase', () => {
         ownerEmail: 'user-123@fiapx.local',
         sourceStorageKey: 'videos/input.mp4',
         idempotencyKey: randomUUID(),
+        ...(correlationId !== undefined ? { correlationId } : {}),
       })
     ).request;
 
-  const queued = async () => {
-    const created = await received();
+  const queued = async (correlationId?: string) => {
+    const created = await received(correlationId);
     return new AcceptProcessingRequestUseCase(repository, unitOfWork).execute({
       eventId: randomUUID(),
       processingRequestId: created.processingRequestId,
@@ -421,6 +423,66 @@ describe('FailProcessingRequestUseCase', () => {
       expect(returned).toEqual(snapshot);
       expect(await storedCopy(request.processingRequestId)).toEqual(snapshot);
       expect(outbox.entries).toHaveLength(entries);
+    });
+  });
+
+  describe('correlation id (OBS-18)', () => {
+    const failAttempt = (request: {
+      processingRequestId: string;
+      attemptId?: string;
+    }) =>
+      useCase.execute({
+        eventId: randomUUID(),
+        origin: 'processing',
+        attemptId: request.attemptId,
+        processingRequestId: request.processingRequestId,
+        failureCode: 'PROCESSAMENTO_FALHOU',
+        occurredAt: new Date().toISOString(),
+      });
+
+    it('carries the id stored at creation on the terminal event of a processing failure', async () => {
+      const request = await queued('cat-1');
+
+      await failAttempt(request);
+
+      expect(outbox.recordedTerminalEvents).toHaveLength(1);
+      expect(outbox.recordedTerminalEvents[0].correlationId).toBe('cat-1');
+    });
+
+    it('carries the id stored at creation on the terminal event of a validation rejection', async () => {
+      const request = await received('cat-1');
+
+      await useCase.execute({
+        eventId: randomUUID(),
+        origin: 'validation',
+        processingRequestId: request.processingRequestId,
+        failureCode: 'FORMATO_INVALIDO',
+        occurredAt: new Date().toISOString(),
+      });
+
+      expect(outbox.recordedTerminalEvents).toHaveLength(1);
+      expect(outbox.recordedTerminalEvents[0].correlationId).toBe('cat-1');
+    });
+
+    it('omits the field when the stored request has none', async () => {
+      const request = await queued();
+
+      await failAttempt(request);
+
+      expect(outbox.recordedTerminalEvents).toHaveLength(1);
+      expect(outbox.recordedTerminalEvents[0]).not.toHaveProperty(
+        'correlationId',
+      );
+    });
+
+    it('takes the id from the stored request, not the ambient log context', async () => {
+      const request = await queued('cat-1');
+
+      await correlationContext.runWithCorrelation('consumer-generated', () =>
+        failAttempt(request),
+      );
+
+      expect(outbox.recordedTerminalEvents[0].correlationId).toBe('cat-1');
     });
   });
 });

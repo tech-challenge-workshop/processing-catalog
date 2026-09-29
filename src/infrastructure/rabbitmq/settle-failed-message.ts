@@ -1,4 +1,8 @@
 import { ProcessingRequestDomainError } from '../../domain/processing-request';
+import {
+  catalogMetrics,
+  type ConsumedEventName,
+} from '../../observability/metrics';
 
 export const DEFAULT_RETRY_BACKOFF_MS = 1000;
 
@@ -68,4 +72,37 @@ export async function settleFailedMessage(
     await new Promise((resolve) => setTimeout(resolve, backoffMs));
   }
   channel.nack(message, false, true);
+}
+
+interface SettlingChannel extends NackingChannel {
+  ack(message: unknown): void;
+}
+
+/**
+ * The single settlement path for a consumed message: runs the handler, acks
+ * on success, and otherwise settles through `settleFailedMessage`.
+ *
+ * Counts `fiapx_events_consumed_total` exactly where the outcome is decided,
+ * so no consumer can forget it. Only final settlements count - acked or
+ * dead-lettered. A requeue is not one: the redelivery is counted when it
+ * settles. The event name comes from the consumer, which knows its pattern.
+ */
+export async function settleMessage(
+  channel: SettlingChannel,
+  message: unknown,
+  event: ConsumedEventName,
+  handle: () => Promise<void>,
+  backoffMs: number = retryBackoffMs(),
+): Promise<void> {
+  try {
+    await handle();
+  } catch (error) {
+    await settleFailedMessage(channel, message, error, backoffMs);
+    if (isPermanentFailure(error)) {
+      catalogMetrics.recordEventConsumed(event, 'dead_lettered');
+    }
+    return;
+  }
+  channel.ack(message);
+  catalogMetrics.recordEventConsumed(event, 'acked');
 }

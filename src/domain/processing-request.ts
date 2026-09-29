@@ -36,6 +36,8 @@ export interface ProcessingRequest {
   failureCode: FailureCode | undefined;
   /** The owner's confirmation key. Absent on requests created before S6. */
   idempotencyKey: string | undefined;
+  /** The pipeline's trace id, carried on every event. Absent before S8. */
+  correlationId: string | undefined;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -45,6 +47,7 @@ export interface CreateProcessingRequestInput {
   ownerEmail: string;
   sourceStorageKey: string;
   idempotencyKey?: string;
+  correlationId?: string;
 }
 
 export class ProcessingRequestDomainError extends Error {}
@@ -73,6 +76,7 @@ export function createProcessingRequest(
     zipStorageKey: undefined,
     failureCode: undefined,
     idempotencyKey: input.idempotencyKey,
+    correlationId: input.correlationId,
     createdAt: now,
     updatedAt: now,
   };

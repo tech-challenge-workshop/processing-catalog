@@ -35,4 +35,13 @@ export class HealthController {
       database: 'up',
     };
   }
+
+  /**
+   * Liveness: 200 while the process serves requests. It never consults a
+   * dependency, so an outage makes the pod not-ready rather than restarted.
+   */
+  @Get('live')
+  live() {
+    return { status: 'ok' };
+  }
 }

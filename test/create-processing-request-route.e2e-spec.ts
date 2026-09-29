@@ -537,6 +537,87 @@ describeIfDatabase(
       );
     });
 
+    describe('correlation id (OBS-16, OBS-21)', () => {
+      const validBody = () => {
+        const ownerUserId = owner('correlated');
+        return {
+          ownerUserId,
+          ownerEmail: `${ownerUserId}@fiapx.local`,
+          sourceStorageKey: `sources/${ownerUserId}/a.mp4`,
+          idempotencyKey: 'key-' + randomUUID(),
+        };
+      };
+
+      const stored = async (
+        ownerUserId: string,
+      ): Promise<{ column: string | null; payload: string | null }[]> =>
+        dataSource.query(
+          `SELECT r.correlation_id AS column,
+                  o.payload->>'correlationId' AS payload
+             FROM processing_request r
+             JOIN outbox o
+               ON o.pattern = 'VideoValidationRequested'
+              AND o.payload->>'processingRequestId' =
+                  r.processing_request_id::text
+            WHERE r.owner_user_id = $1`,
+          [ownerUserId],
+        );
+
+      it('answers 201 and stores a valid id on the request and its outbox event', async () => {
+        const body = { ...validBody(), correlationId: 'cat-1' };
+
+        const res = await create(body);
+
+        expect(res.status).toBe(201);
+        expect(await stored(body.ownerUserId)).toEqual([
+          { column: 'cat-1', payload: 'cat-1' },
+        ]);
+      });
+
+      it('stores a 128 characters id whole, in a nullable varchar(128) column', async () => {
+        const correlationId = 'c'.repeat(128);
+        const body = { ...validBody(), correlationId };
+
+        const res = await create(body);
+
+        expect(res.status).toBe(201);
+        expect(await stored(body.ownerUserId)).toEqual([
+          { column: correlationId, payload: correlationId },
+        ]);
+        const columns: {
+          character_maximum_length: number;
+          is_nullable: string;
+        }[] = await dataSource.query(
+          `SELECT character_maximum_length, is_nullable
+             FROM information_schema.columns
+            WHERE table_schema = 'catalog'
+              AND table_name = 'processing_request'
+              AND column_name = 'correlation_id'`,
+        );
+        expect(columns).toEqual([
+          { character_maximum_length: 128, is_nullable: 'YES' },
+        ]);
+      });
+
+      it('answers 400 in the field-error shape to invalid ids, and writes nothing', async () => {
+        for (const correlationId of ['', '   ', 'c'.repeat(129), 42, null]) {
+          const body = validBody();
+
+          const res = await create({ ...body, correlationId });
+
+          expect(res.status).toBe(400);
+          expect(res.body).toStrictEqual({
+            message:
+              'correlationId must be 1 to 128 printable ASCII characters',
+            error: 'Bad Request',
+            statusCode: 400,
+          });
+          expect(await rows(body.ownerUserId)).toBe(0);
+          expect(await outboxEntries(body.ownerUserId)).toBe(0);
+        }
+      });
+    });
+
     it('answers two concurrent creates with one key as one 201 and one 200 carrying the same id', async () => {
       const alice = owner('alice');
       const body = {

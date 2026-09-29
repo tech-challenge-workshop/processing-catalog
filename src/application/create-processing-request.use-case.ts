@@ -9,6 +9,7 @@ import {
   DuplicateSourceError,
   type ProcessingRequestRepository,
 } from '../domain/processing-request.repository';
+import { parseCorrelationId } from '../observability/correlation-context';
 import { EVENT_ROUTES } from './event-routes';
 import { UNIT_OF_WORK, type UnitOfWork } from './unit-of-work';
 import { VideoValidationRequestedEvent } from './event-publisher';
@@ -19,6 +20,8 @@ export interface CreateProcessingRequestInput {
   ownerEmail: string;
   sourceStorageKey: string;
   idempotencyKey: string;
+  /** Optional; validated when present, whatever its runtime type. */
+  correlationId?: string;
 }
 
 /** `created` wrote a request; `replayed` returned one and wrote nothing. */
@@ -53,6 +56,7 @@ export class CreateProcessingRequestUseCase {
     if (!input.idempotencyKey || input.idempotencyKey.trim().length === 0) {
       throw new ProcessingRequestDomainError('idempotencyKey is required');
     }
+    const correlationId = validCorrelationId(input.correlationId);
 
     const existing = await this.repository.findByEventId(input.eventId);
     if (existing) {
@@ -65,6 +69,7 @@ export class CreateProcessingRequestUseCase {
       ownerEmail: input.ownerEmail,
       sourceStorageKey: input.sourceStorageKey,
       idempotencyKey: input.idempotencyKey,
+      correlationId,
     });
 
     const bound = await this.repository.findByOwnerAndIdempotencyKey(
@@ -91,6 +96,9 @@ export class CreateProcessingRequestUseCase {
       ownerUserId: request.ownerUserId,
       sourceStorageKey: request.sourceStorageKey,
       occurredAt: request.createdAt.toISOString(),
+      ...(request.correlationId !== undefined
+        ? { correlationId: request.correlationId }
+        : {}),
     };
 
     try {
@@ -150,4 +158,22 @@ export class CreateProcessingRequestUseCase {
     }
     return { request: bound, outcome: 'replayed' };
   }
+}
+
+/**
+ * Absent stays absent. Present must be 1 to 128 printable ASCII characters
+ * once trimmed (L-005: it lands in a bounded column); the trimmed value is
+ * the one stored. A non-string is rejected, never coerced (L-010).
+ */
+function validCorrelationId(raw: unknown): string | undefined {
+  if (raw === undefined) {
+    return undefined;
+  }
+  const parsed = parseCorrelationId(raw);
+  if (parsed === null) {
+    throw new ProcessingRequestDomainError(
+      'correlationId must be 1 to 128 printable ASCII characters',
+    );
+  }
+  return parsed;
 }
