@@ -17,7 +17,8 @@
   "forceExit": true,
   "maxWorkers": 1,
   "setupFiles": [
-    "<rootDir>/support/e2e-database.setup.ts"
+    "<rootDir>/support/e2e-database.setup.ts",
+    "<rootDir>/support/quiet-logs.setup.ts"
   ],
   "globalSetup": "<rootDir>/support/e2e-database.global-setup.ts"
 }

@@ -152,9 +152,9 @@ T18
 
 **Done when**:
 
-- [ ] Booted app emits JSON logs with per-request correlation ids on the HTTP surface
-- [ ] Gate check passes: `npm run lint && npm run typecheck && npm run build`
-- [ ] Test count: no new tests (wiring layer - matrix; e2e in T18)
+- [x] Booted app emits JSON logs with per-request correlation ids on the HTTP surface
+- [x] Gate check passes: `npm run lint && npm run typecheck && npm run build`
+- [x] Test count: no new tests (wiring layer - matrix; e2e in T18)
 
 **Tests**: none
 **Gate**: build

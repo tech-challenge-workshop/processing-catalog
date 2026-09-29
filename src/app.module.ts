@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { CreateProcessingRequestController } from './interface/create-processing-request.controller';
@@ -40,11 +40,13 @@ import { OwnedProcessingRequestsController } from './interface/owned-processing-
 import { ListOwnedProcessingRequestsQuery } from './application/list-owned-processing-requests.query';
 import { GetOwnedProcessingRequestQuery } from './application/get-owned-processing-request.query';
 import { GetOwnedArchiveQuery } from './application/get-owned-archive.query';
+import { ObservabilityModule } from './observability/observability.module';
+import { CorrelationMiddleware } from './observability/correlation.middleware';
 
 const isLocalIntegration = () => process.env.LOCAL_INTEGRATION === 'true';
 
 @Module({
-  imports: [RabbitMQModule],
+  imports: [ObservabilityModule, RabbitMQModule],
   controllers: [
     AppController,
     CreateProcessingRequestController,
@@ -135,4 +137,8 @@ const isLocalIntegration = () => process.env.LOCAL_INTEGRATION === 'true';
     ProcessingFailedConsumer,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(CorrelationMiddleware).forRoutes('*');
+  }
+}
