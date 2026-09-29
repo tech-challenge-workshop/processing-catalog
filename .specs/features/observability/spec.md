@@ -119,7 +119,7 @@ The Catalog owns the lifecycle and the transactional outbox, but emits no metric
 | OBS-22 | P1: structured logs | Design | Pending |
 | OBS-23 | P2: Metrics (exposition set) | Execute (T13) | In progress |
 | OBS-24 | P2: Metrics (publish failures) | Execute (T13) | In progress |
-| OBS-25 | P2: Metrics (consumed counter) | Execute (T13) | In progress |
+| OBS-25 | P2: Metrics (consumed counter) | Execute (T13, T14) | In progress |
 | OBS-26 | P2: Health (not-ready on dependency loss) | Design | Pending |
 | OBS-27 | P2: Health (ready when healthy) | Design | Pending |
 | OBS-28 | P2: Health/Metrics (no auth, no noise) | Design | Pending |

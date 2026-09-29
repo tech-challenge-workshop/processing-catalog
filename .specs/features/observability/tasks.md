@@ -389,9 +389,9 @@ T18
 
 **Done when**:
 
-- [ ] Unit: each settlement branch increments exactly once with the right label (event name supplied by the caller)
-- [ ] Gate check passes: `npm test`
-- [ ] Test count: 5 new unit tests pass (no silent deletions)
+- [x] Unit: each settlement branch increments exactly once with the right label (event name supplied by the caller)
+- [x] Gate check passes: `npm test`
+- [x] Test count: 5 new unit tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick
