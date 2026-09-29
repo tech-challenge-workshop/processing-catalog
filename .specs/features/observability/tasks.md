@@ -106,10 +106,10 @@ T18
 
 **Done when**:
 
-- [ ] Log lines are single JSON objects with `service: 'processing-catalog'` and the ALS correlation id
-- [ ] An `ownerEmail` value anywhere in a logged object is redacted
-- [ ] Gate check passes: `npm test`
-- [ ] Test count: 7 new unit tests pass (no silent deletions)
+- [x] Log lines are single JSON objects with `service: 'processing-catalog'` and the ALS correlation id
+- [x] An `ownerEmail` value anywhere in a logged object is redacted
+- [x] Gate check passes: `npm test`
+- [x] Test count: 7 new unit tests pass (no silent deletions)
 
 **Tests**: unit
 **Gate**: quick

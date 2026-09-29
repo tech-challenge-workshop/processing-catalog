@@ -28,6 +28,7 @@
     "@nestjs/platform-express": "^11.0.1",
     "amqp-connection-manager": "^5.0.0",
     "amqplib": "^2.0.1",
+    "nestjs-pino": "^5.2.1",
     "pg": "^8.23.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
