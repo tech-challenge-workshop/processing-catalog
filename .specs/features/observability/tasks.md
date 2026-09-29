@@ -249,9 +249,11 @@ T18
 
 **Done when**:
 
-- [ ] E2E (in T18 sweep): 400 on invalid values, 201 with persisted value on valid — controller surface asserts the same matrix through HTTP
-- [ ] Gate check passes: `npm test && npm run test:e2e`
-- [ ] Test count: 2 new e2e cases pass (no silent deletions)
+- [x] E2E (in T18 sweep): 400 on invalid values, 201 with persisted value on valid — controller surface asserts the same matrix through HTTP
+- [x] Gate check passes: `npm test && npm run test:e2e`
+- [x] Test count: 2 new e2e cases pass (no silent deletions)
+
+> Landed in `test/create-processing-request-route.e2e-spec.ts` (the route's existing e2e), not deferred to T18: 201 stores `cat-1` in `processing_request.correlation_id` and the outbox payload; the 400 case walks empty, blank, 129 chars, a number and `null` through HTTP in the existing field-error shape, writing nothing. The body field is the only persisted source; the `X-Correlation-Id` header still scopes the request's logs (T4 middleware) but is not persisted.
 
 **Tests**: e2e
 **Gate**: full

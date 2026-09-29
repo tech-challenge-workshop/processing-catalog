@@ -42,6 +42,8 @@ export class CreateProcessingRequestController {
           ownerEmail: dto.ownerEmail,
           sourceStorageKey: dto.sourceStorageKey,
           idempotencyKey: dto.idempotencyKey,
+          // Validated by the use case; its rejection is a 400 below.
+          correlationId: dto.correlationId,
         });
 
       if (outcome === 'replayed') {
