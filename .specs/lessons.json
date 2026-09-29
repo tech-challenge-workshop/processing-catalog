@@ -3,7 +3,7 @@
   "promote_threshold": 2,
   "window_days": 45,
   "quarantine_threshold": 2,
-  "next_id": 12,
+  "next_id": 17,
   "lessons": [
     {
       "id": "L-001",
@@ -206,6 +206,96 @@
       ],
       "created": "2026-09-27T00:57:44Z",
       "last_seen": "2026-09-27T00:57:44Z"
+    },
+    {
+      "id": "L-012",
+      "key": "surviving_mutant::round trip a value at its maximum validated length through the real database so a column narrower than the validator bound fails a test",
+      "text": "Round-trip a value at its maximum validated length through the real database so a column narrower than the validator bound fails a test.",
+      "signal": "surviving_mutant",
+      "scope": "persistence",
+      "status": "candidate",
+      "features": [
+        "observability"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "M8 src/infrastructure/persistence/migrations/1789959000000-AddCorrelationId.ts:12 (persistence)"
+      ],
+      "created": "2026-09-29T01:41:27Z",
+      "last_seen": "2026-09-29T01:41:27Z"
+    },
+    {
+      "id": "L-013",
+      "key": "spec_precision_gap::when a counter is labelled by settlement outcome the spec must say whether a requeue counts as a settlement",
+      "text": "When a counter is labelled by settlement outcome, the spec must say whether a requeue counts as a settlement.",
+      "signal": "spec_precision_gap",
+      "scope": "messaging",
+      "status": "candidate",
+      "features": [
+        "observability"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "OBS-25 src/infrastructure/rabbitmq/settle-failed-message.ts:99 (messaging)"
+      ],
+      "created": "2026-09-29T01:41:27Z",
+      "last_seen": "2026-09-29T01:41:27Z"
+    },
+    {
+      "id": "L-014",
+      "key": "spec_precision_gap::when every log line must carry the current correlation id the spec must say what lines emitted outside any request or message scope carry",
+      "text": "When every log line must carry the current correlation id, the spec must say what lines emitted outside any request or message scope carry.",
+      "signal": "spec_precision_gap",
+      "scope": "observability",
+      "status": "candidate",
+      "features": [
+        "observability"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "OBS-22 src/observability/logger.config.ts:47 (observability)"
+      ],
+      "created": "2026-09-29T01:41:27Z",
+      "last_seen": "2026-09-29T01:41:27Z"
+    },
+    {
+      "id": "L-015",
+      "key": "spec_deviation::pino wildcard redact paths need a parent key so list the bare root key and each nesting depth the logged shapes use",
+      "text": "Pino wildcard redact paths need a parent key, so list the bare root key and each nesting depth the logged shapes use.",
+      "signal": "spec_deviation",
+      "scope": "observability",
+      "status": "candidate",
+      "features": [
+        "observability"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "SPEC_DEVIATION src/observability/logger.config.ts:7 (observability)"
+      ],
+      "created": "2026-09-29T01:41:27Z",
+      "last_seen": "2026-09-29T01:41:27Z"
+    },
+    {
+      "id": "L-016",
+      "key": "spec_deviation::build environment dependent module config in a factory at app creation not at import so test bootstraps can set the environment first",
+      "text": "Build environment-dependent module config in a factory at app creation, not at import, so test bootstraps can set the environment first.",
+      "signal": "spec_deviation",
+      "scope": "observability",
+      "status": "candidate",
+      "features": [
+        "observability"
+      ],
+      "recurrence": 1,
+      "harmful": 0,
+      "evidence": [
+        "SPEC_DEVIATION src/observability/observability.module.ts:9 (observability)"
+      ],
+      "created": "2026-09-29T01:41:27Z",
+      "last_seen": "2026-09-29T01:41:27Z"
     }
   ]
 }
