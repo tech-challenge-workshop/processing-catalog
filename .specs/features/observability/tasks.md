@@ -200,9 +200,9 @@ T18
 
 **Done when**:
 
-- [ ] TypeORM maps the column without schema drift on existing suites
-- [ ] Gate check passes: `npm test && npm run test:e2e`
-- [ ] Test count: no new tests (entity layer - matrix; round-trip in T7/T18 e2e)
+- [x] TypeORM maps the column without schema drift on existing suites
+- [x] Gate check passes: `npm test && npm run test:e2e`
+- [x] Test count: no new tests (entity layer - matrix; round-trip in T7/T18 e2e)
 
 **Tests**: none
 **Gate**: full
